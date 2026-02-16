@@ -88,10 +88,10 @@ export default function BadgePage() {
           />
         </div>
 
-        {/* 5. GREY FOOTER BOX (Dates & Location) */}
+        {/* 5. GREY FOOTER BOX (Corrected Dates) */}
         <div className="w-full bg-gray-50 py-4 px-6 border-t border-gray-100 mt-auto">
           <p className="text-gray-900 font-black text-sm uppercase tracking-wide">
-            27th Feb - 1st March 2026
+            12th - 14th AUGUST 2026
           </p>
           <p className="text-gray-500 text-xs font-bold mt-1">
             GMDC Ground, Ahmedabad
