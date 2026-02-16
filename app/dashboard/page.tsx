@@ -1,122 +1,224 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export default function Dashboard() {
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [isExhibitor, setIsExhibitor] = useState(false)
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [role, setRole] = useState<'visitor' | 'exhibitor' | null>(null)
   const [loading, setLoading] = useState(true)
+  const [meetings, setMeetings] = useState<any[]>([])
 
   useEffect(() => {
-    const checkUserRole = async () => {
+    const checkUser = async () => {
+      // 1. Get Current User
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserEmail(user.email || null)
-        
-        // CHECK IF LOGGED-IN EMAIL MATCHES A PAID EXHIBITOR'S CONTACT_EMAIL
-        const { data: exhibitorData } = await supabase
-          .from('exhibitors')
-          .select('id, contact_email')
-          .eq('contact_email', user.email)
-          .single()
-        
-        if (exhibitorData) {
-          setIsExhibitor(true)
-          
-          // AUTO-LINK: If the ID in the table is empty, update it with this User's ID
-          if (!exhibitorData.id || exhibitorData.id !== user.id) {
-            await supabase
-              .from('exhibitors')
-              .update({ id: user.id })
-              .eq('contact_email', user.email)
-          }
-        }
+      if (!user) {
+        router.push('/login')
+        return
+      }
+      setUser(user)
+
+      // 2. Check if Exhibitor
+      const { data: exhibitor } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (exhibitor) {
+        setRole('exhibitor')
+        fetchExhibitorMeetings(user.id)
+      } else {
+        setRole('visitor')
       }
       setLoading(false)
     }
-    checkUserRole()
-  }, [])
 
-  if (loading) return <div className="p-10 text-center font-bold">Loading GUJ GIFT EXPO...</div>
+    checkUser()
+  }, [router])
+
+  // FUNCTION: Fetch Meeting Requests for this Exhibitor
+  const fetchExhibitorMeetings = async (exhibitorId: string) => {
+    // Fetch meetings AND the visitor details associated with them
+    const { data, error } = await supabase
+      .from('meetings')
+      .select(`
+        *,
+        visitors (
+          full_name,
+          company_name,
+          designation,
+          email
+        )
+      `)
+      .eq('exhibitor_id', exhibitorId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching meetings:', error)
+    } else {
+      setMeetings(data || [])
+    }
+  }
+
+  // FUNCTION: Handle Accept/Reject
+  const updateStatus = async (meetingId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('meetings')
+      .update({ status: newStatus })
+      .eq('id', meetingId)
+
+    if (!error) {
+      // Refresh the list locally to show the change immediately
+      setMeetings(meetings.map(m => 
+        m.id === meetingId ? { ...m, status: newStatus } : m
+      ))
+    }
+  }
+
+  // LOGOUT
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  if (loading) return <div className="p-8 text-center">Loading Dashboard...</div>
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-md mx-auto space-y-6">
-        
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-            <p className="text-gray-500 text-xs">{userEmail}</p>
-          </div>
-          <div className="bg-blue-100 text-blue-700 text-[10px] px-2 py-1 rounded font-bold uppercase">
-            {isExhibitor ? 'Exhibitor' : 'Visitor'}
-          </div>
+    <div className="min-h-screen bg-slate-50 p-4 pb-24">
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 uppercase">
+            {role === 'exhibitor' ? 'Exhibitor Panel' : 'My Dashboard'}
+          </h1>
+          <p className="text-sm text-slate-500">Welcome back</p>
         </div>
+        <Button variant="outline" onClick={handleLogout} className="text-xs">
+          Sign Out
+        </Button>
+      </div>
 
-        {/* 1. EXHIBITOR PANEL (Only for Paid Stall Holders) */}
-        {isExhibitor && (
-          <Card className="border-t-8 border-t-green-600 shadow-lg bg-green-50/30">
+      {/* --- VISITOR VIEW --- */}
+      {role === 'visitor' && (
+        <div className="grid gap-4">
+          <Card className="border-l-4 border-orange-500 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-green-800 text-lg flex items-center gap-2">
-                🏢 Stall Management
-              </CardTitle>
+              <CardTitle>My Entry Pass</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">View and respond to B2B meeting requests for your stall.</p>
-              <Link href="/exhibitor/meetings">
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-white py-6 font-bold text-md shadow-md">
-                   📅 VIEW MY MEETINGS
-                </Button>
-              </Link>
+            <CardContent>
+              <Button className="w-full bg-orange-600 font-bold" onClick={() => router.push('/badge')}>
+                VIEW BADGE
+              </Button>
             </CardContent>
           </Card>
-        )}
 
-        {/* 2. VISITOR PASS (For Everyone) */}
-        <Card className="border-none shadow-lg bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-xl uppercase tracking-tight">Your Entry Pass</h3>
-                <p className="text-blue-100 text-xs opacity-90">Required for GMDC Entry</p>
-              </div>
-              <Link href="/badge">
-                <Button className="bg-white text-blue-700 hover:bg-gray-100 font-black px-6">
-                  VIEW BADGE
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 3. EVENT TOOLS */}
-        <Card className="border-gray-200 shadow-sm border-t-4 border-t-orange-500">
-          <CardHeader><CardTitle className="text-gray-700 text-md">Event Navigation</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/exhibitors">
-              <Button variant="outline" className="w-full py-5 border-orange-200 text-orange-700 hover:bg-orange-50 font-bold">
-                🏢 BROWSE DIRECTORY
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Exhibitor Directory</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-500 mb-4">Find companies and schedule meetings.</p>
+              <Button variant="secondary" className="w-full" onClick={() => router.push('/directory')}>
+                BROWSE DIRECTORY
               </Button>
-            </Link>
-            
-            {/* ORGANIZER SCANNER (Hidden for regular users) */}
-            {userEmail === 'connect@shreebalajievent.com' && (
-              <Link href="/admin/scanner">
-                <Button className="w-full bg-orange-600 text-white py-5 font-bold shadow-md mt-2">
-                  🚀 OPEN GATE SCANNER
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-        <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-4">
-          GUJ GIFT EXPO 2026 • Shree Balaji Event LLP
-        </p>
-      </div>
+      {/* --- EXHIBITOR VIEW --- */}
+      {role === 'exhibitor' && (
+        <div className="space-y-6">
+          
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+              <h3 className="text-3xl font-black text-blue-600">{meetings.length}</h3>
+              <p className="text-xs text-slate-400 uppercase font-bold">Total Requests</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+              <h3 className="text-3xl font-black text-green-600">
+                {meetings.filter(m => m.status === 'accepted').length}
+              </h3>
+              <p className="text-xs text-slate-400 uppercase font-bold">Confirmed</p>
+            </div>
+          </div>
+
+          {/* Meeting Requests List */}
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Meeting Requests</h2>
+            
+            {meetings.length === 0 ? (
+              <div className="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300">
+                <p className="text-slate-400">No requests yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {meetings.map((meeting) => (
+                  <Card key={meeting.id} className="overflow-hidden border-slate-200 shadow-sm">
+                    <div className="p-4">
+                      {/* TOP ROW: Status & Time */}
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant={meeting.status === 'accepted' ? 'default' : meeting.status === 'rejected' ? 'destructive' : 'secondary'}>
+                          {meeting.status.toUpperCase()}
+                        </Badge>
+                        <span className="text-xs font-bold text-slate-500">
+                          {meeting.requested_time}
+                        </span>
+                      </div>
+
+                      {/* MIDDLE ROW: Visitor Details */}
+                      <div className="mb-4">
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {meeting.visitors?.full_name || 'Unknown Visitor'}
+                        </h3>
+                        <p className="text-sm text-blue-600 font-bold">
+                          {meeting.visitors?.company_name}
+                        </p>
+                        <p className="text-xs text-slate-400 italic">
+                          {meeting.visitors?.designation}
+                        </p>
+                      </div>
+
+                      {/* BOTTOM ROW: Actions (Only if Pending) */}
+                      {meeting.status === 'pending' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button 
+                            variant="outline" 
+                            className="border-red-100 text-red-600 hover:bg-red-50"
+                            onClick={() => updateStatus(meeting.id, 'rejected')}
+                          >
+                            Decline
+                          </Button>
+                          <Button 
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => updateStatus(meeting.id, 'accepted')}
+                          >
+                            Accept
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {meeting.status === 'accepted' && (
+                        <div className="bg-green-50 text-green-800 text-xs font-bold p-2 text-center rounded">
+                          ✅ Meeting Confirmed
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
