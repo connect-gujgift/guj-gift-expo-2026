@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import QRCode from "react-qr-code"
-import html2canvas from 'html2canvas'
 import { Button } from "@/components/ui/button"
 
 export default function BadgePage() {
@@ -11,7 +10,6 @@ export default function BadgePage() {
   const [visitor, setVisitor] = useState<any>(null)
   const [exhibitorInfo, setExhibitorInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const badgeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchBadgeData = async () => {
@@ -38,53 +36,19 @@ export default function BadgePage() {
     fetchBadgeData()
   }, [router])
 
-  const downloadBadge = async () => {
-    if (!badgeRef.current) return;
-    
-    try {
-      // 1. Move to top for clean capture
-      window.scrollTo(0,0);
-
-      // 2. Capture without problematic properties
-      const canvas = await html2canvas(badgeRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-
-      // 3. Convert and trigger download
-      const image = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = image;
-      link.download = `GUJ-GIFT-BADGE.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (err) {
-      console.error("Capture failure:", err);
-      alert("Mobile security is high. If the download doesn't start, please simply take a screenshot of your badge!");
-    }
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 italic">Loading Pass...</div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">Loading Pass...</div>
   if (!visitor) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">Profile Not Found</div>
 
   const isExhibitor = !!exhibitorInfo;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 font-sans">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-start py-4 px-4 font-sans overflow-hidden">
       
-      {/* BADGE CARD - DESIGN RESTORED FROM OLD BADGE.PNG */}
-      <div 
-        ref={badgeRef} 
-        className="bg-white w-[340px] rounded-[2.5rem] border-[8px] border-orange-500 shadow-2xl overflow-hidden flex flex-col items-center text-center pb-8 relative"
-      >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -mr-8 -mt-8 opacity-40"></div>
-
-        {/* LOGO */}
-        <div className="mt-8 mb-4 h-24 flex items-center justify-center px-6">
+      {/* COMPACT BADGE CARD */}
+      <div className="bg-white w-full max-w-[330px] rounded-[1.5rem] border-[6px] border-orange-500 shadow-xl overflow-hidden flex flex-col items-center text-center pb-4 relative">
+        
+        {/* 1. COMPACT LOGO SECTION */}
+        <div className="mt-4 mb-2 h-20 flex items-center justify-center px-4">
            <img 
              src="/event-logo.png" 
              alt="Logo" 
@@ -92,69 +56,65 @@ export default function BadgePage() {
            />
         </div>
 
-        {/* LABEL */}
-        <div className={`px-10 py-1.5 rounded-full text-sm font-black tracking-widest uppercase mb-4 shadow-md ${isExhibitor ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'}`}>
-          {isExhibitor ? 'EXHIBITOR' : 'VISITOR'}
+        {/* 2. ROLE LABEL & STALL */}
+        <div className="flex flex-col items-center gap-2 mb-3">
+          <div className={`px-6 py-1 rounded-full text-[12px] font-black tracking-widest uppercase shadow-sm ${isExhibitor ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'}`}>
+            {isExhibitor ? 'EXHIBITOR' : 'VISITOR'}
+          </div>
+          {isExhibitor && (
+            <div className="bg-green-50 border border-green-600 text-green-700 px-4 py-0.5 rounded-lg font-black text-sm">
+              STALL: {exhibitorInfo.stall_number || 'A-111'}
+            </div>
+          )}
         </div>
 
-        {/* STALL NUMBER */}
-        {isExhibitor && (
-          <div className="mb-4 bg-green-50 border-2 border-green-600 text-green-700 px-6 py-1 rounded-xl font-black text-xl">
-            STALL: {exhibitorInfo.stall_number || 'A-111'}
-          </div>
-        )}
-
-        {/* USER INFO */}
-        <div className="px-6 mb-6">
-          <h1 className="text-3xl font-black text-slate-900 uppercase leading-tight">
+        {/* 3. USER INFO (Tightened) */}
+        <div className="px-4 mb-3">
+          <h1 className="text-2xl font-black text-slate-900 uppercase leading-none mb-1">
             {visitor.full_name}
           </h1>
-          <p className="text-blue-600 font-bold uppercase text-sm tracking-wide mt-1">
+          <p className="text-blue-600 font-bold uppercase text-[12px] tracking-wide">
             {visitor.company_name}
           </p>
-          <p className="text-gray-400 font-medium italic text-xs mt-1">
+          <p className="text-gray-400 font-medium italic text-[10px] mt-0.5">
             {visitor.designation}
           </p>
         </div>
 
-        {/* QR CODE */}
-        <div className="bg-white p-3 rounded-2xl border-2 border-slate-50 shadow-inner mb-6">
+        {/* 4. QR CODE (Sized for Screenshot) */}
+        <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-inner mb-4">
           <QRCode 
             value={visitor.id} 
-            size={150}
+            size={130}
           />
         </div>
 
-        {/* FOOTER - CORRECTED DATES */}
-        <div className="w-full bg-slate-50 py-4 px-6 border-t border-slate-100 mt-auto">
-          <p className="text-slate-900 font-black text-sm uppercase tracking-tighter">
+        {/* 5. FOOTER (Small & Essential) */}
+        <div className="w-full bg-slate-50 py-3 px-4 border-t border-slate-100 mt-auto">
+          <p className="text-slate-900 font-black text-[12px] uppercase tracking-tighter">
             12th - 14th AUGUST 2026
           </p>
-          <p className="text-slate-500 text-[10px] font-bold uppercase">
+          <p className="text-slate-500 text-[9px] font-bold uppercase">
             GMDC University Ground, Ahmedabad
           </p>
         </div>
 
-        {/* ORGANIZER */}
-        <div className="bg-white w-full py-4 flex items-center justify-center gap-3">
-            <img src="/organizer-logo.png" alt="SB" className="w-8 h-8 object-contain" />
-            <div className="text-left border-l pl-3 border-slate-200">
-                <p className="text-[7px] text-slate-400 font-black uppercase">Organized By</p>
-                <p className="text-[10px] text-slate-900 font-black leading-none">Shree Balaji Event LLP</p>
+        {/* 6. ORGANIZER BRANDING */}
+        <div className="bg-white w-full py-2 flex items-center justify-center gap-2">
+            <img src="/organizer-logo.png" alt="SB" className="w-6 h-6 object-contain" />
+            <div className="text-left border-l pl-2 border-slate-200">
+                <p className="text-[9px] text-slate-900 font-black leading-none uppercase">Shree Balaji Event LLP</p>
             </div>
         </div>
       </div>
 
-      {/* DOWNLOAD BUTTON */}
-      <div className="w-full max-w-[340px] mt-6">
-        <Button 
-          onClick={downloadBadge}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-black py-8 text-xl shadow-2xl rounded-2xl transition-all"
-        >
-          ⬇️ SAVE TO GALLERY
-        </Button>
-        <p className="text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
-          GUJ GIFT EXPO 2026 • Ahmedabad
+      {/* INSTRUCTIONS */}
+      <div className="mt-4 text-center">
+        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
+          📸 Please Take a Screenshot
+        </p>
+        <p className="text-slate-400 text-[10px] mt-1">
+          Show this image at the entry gate for scanning.
         </p>
       </div>
     </div>
