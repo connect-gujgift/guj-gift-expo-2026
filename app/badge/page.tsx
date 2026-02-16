@@ -42,72 +42,69 @@ export default function BadgePage() {
     if (!badgeRef.current) return;
     
     try {
-      // Ensure the user is scrolled to top for a clean capture
+      // 1. Move to top for clean capture
       window.scrollTo(0,0);
 
+      // 2. Capture without problematic properties
       const canvas = await html2canvas(badgeRef.current, {
         backgroundColor: '#ffffff',
-        scale: 3, 
+        scale: 2,
         useCORS: true,
-        allowTaint: true,
-        logging: false,
-        width: badgeRef.current.offsetWidth,
-        height: badgeRef.current.offsetHeight
+        logging: false
       });
 
-      const image = canvas.toDataURL("image/png", 1.0);
+      // 3. Convert and trigger download
+      const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = image;
-      link.download = `BADGE-${visitor?.full_name?.split(' ')[0] || 'GUJ-GIFT-EXPO'}.png`;
-      
+      link.download = `GUJ-GIFT-BADGE.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
     } catch (err) {
       console.error("Capture failure:", err);
-      alert("Download failed. Please take a screenshot of your badge.");
+      alert("Mobile security is high. If the download doesn't start, please simply take a screenshot of your badge!");
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500 italic">Preparing your pass...</div>
-  if (!visitor) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">Error: Profile not found.</div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 italic">Loading Pass...</div>
+  if (!visitor) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">Profile Not Found</div>
 
   const isExhibitor = !!exhibitorInfo;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4 gap-6 font-sans">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 font-sans">
       
-      {/* BADGE AREA */}
+      {/* BADGE CARD - DESIGN RESTORED FROM OLD BADGE.PNG */}
       <div 
         ref={badgeRef} 
-        className="bg-white w-[350px] rounded-[2.5rem] border-[8px] border-orange-500 shadow-2xl overflow-hidden flex flex-col items-center text-center pb-8 relative"
+        className="bg-white w-[340px] rounded-[2.5rem] border-[8px] border-orange-500 shadow-2xl overflow-hidden flex flex-col items-center text-center pb-8 relative"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -mr-8 -mt-8 opacity-50"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -mr-8 -mt-8 opacity-40"></div>
 
-        {/* 1. LOGO */}
-        <div className="mt-8 mb-4 h-28 flex items-center justify-center px-6">
+        {/* LOGO */}
+        <div className="mt-8 mb-4 h-24 flex items-center justify-center px-6">
            <img 
              src="/event-logo.png" 
-             alt="GUJ GIFT EXPO" 
+             alt="Logo" 
              className="max-w-full max-h-full object-contain"
-             crossOrigin="anonymous" 
            />
         </div>
 
-        {/* 2. ROLE LABEL */}
-        <div className={`px-10 py-2 rounded-full text-sm font-black tracking-widest uppercase mb-4 shadow-md ${isExhibitor ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'}`}>
+        {/* LABEL */}
+        <div className={`px-10 py-1.5 rounded-full text-sm font-black tracking-widest uppercase mb-4 shadow-md ${isExhibitor ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'}`}>
           {isExhibitor ? 'EXHIBITOR' : 'VISITOR'}
         </div>
 
-        {/* 3. STALL INFO */}
+        {/* STALL NUMBER */}
         {isExhibitor && (
           <div className="mb-4 bg-green-50 border-2 border-green-600 text-green-700 px-6 py-1 rounded-xl font-black text-xl">
-            STALL: {exhibitorInfo.stall_number || 'A-000'}
+            STALL: {exhibitorInfo.stall_number || 'A-111'}
           </div>
         )}
 
-        {/* 4. DETAILS */}
+        {/* USER INFO */}
         <div className="px-6 mb-6">
           <h1 className="text-3xl font-black text-slate-900 uppercase leading-tight">
             {visitor.full_name}
@@ -120,16 +117,15 @@ export default function BadgePage() {
           </p>
         </div>
 
-        {/* 5. QR CODE */}
-        <div className="bg-white p-3 rounded-2xl border-2 border-slate-50 shadow-inner mb-8">
+        {/* QR CODE */}
+        <div className="bg-white p-3 rounded-2xl border-2 border-slate-50 shadow-inner mb-6">
           <QRCode 
             value={visitor.id} 
-            size={160}
-            level="H"
+            size={150}
           />
         </div>
 
-        {/* 6. EVENT FOOTER */}
+        {/* FOOTER - CORRECTED DATES */}
         <div className="w-full bg-slate-50 py-4 px-6 border-t border-slate-100 mt-auto">
           <p className="text-slate-900 font-black text-sm uppercase tracking-tighter">
             12th - 14th AUGUST 2026
@@ -139,24 +135,27 @@ export default function BadgePage() {
           </p>
         </div>
 
-        {/* 7. ORGANIZER BRANDING */}
+        {/* ORGANIZER */}
         <div className="bg-white w-full py-4 flex items-center justify-center gap-3">
-            <img src="/organizer-logo.png" alt="SB" className="w-8 h-8 object-contain rounded-full" crossOrigin="anonymous" />
+            <img src="/organizer-logo.png" alt="SB" className="w-8 h-8 object-contain" />
             <div className="text-left border-l pl-3 border-slate-200">
                 <p className="text-[7px] text-slate-400 font-black uppercase">Organized By</p>
-                <p className="text-[11px] text-slate-900 font-black leading-none">Shree Balaji Event LLP</p>
+                <p className="text-[10px] text-slate-900 font-black leading-none">Shree Balaji Event LLP</p>
             </div>
         </div>
       </div>
 
-      {/* BUTTON */}
-      <div className="w-full max-w-[350px]">
+      {/* DOWNLOAD BUTTON */}
+      <div className="w-full max-w-[340px] mt-6">
         <Button 
           onClick={downloadBadge}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-8 text-xl shadow-2xl rounded-2xl transition-all"
+          className="w-full bg-blue-700 hover:bg-blue-800 text-white font-black py-8 text-xl shadow-2xl rounded-2xl transition-all"
         >
           ⬇️ SAVE TO GALLERY
         </Button>
+        <p className="text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
+          GUJ GIFT EXPO 2026 • Ahmedabad
+        </p>
       </div>
     </div>
   )
