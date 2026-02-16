@@ -17,8 +17,8 @@ export default function SecureScannerPage() {
     const checkAdminStatus = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       
-      // ENTER YOUR ACTUAL EMAIL HERE
-      const adminEmail = 'admin@gmail.com' 
+     // ENTER YOUR ACTUAL EMAIL HERE
+const adminEmail = 'connect@shreebalajievent.com'
 
       if (!user || user.email !== adminEmail) {
         alert("Access Denied: Only authorized organizers can access the scanner.")
