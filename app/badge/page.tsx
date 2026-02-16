@@ -1,106 +1,71 @@
 'use client'
-import { useEffect, useState, useRef } from 'react' // Added useRef
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import QRCode from 'react-qr-code'
-import { toPng } from 'html-to-image' // Added this import
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { QRCodeSVG } from 'qrcode.react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function BadgePage() {
-  const router = useRouter()
-  const badgeRef = useRef<HTMLDivElement>(null) // Reference for the badge
+export default function VisitorBadge() {
   const [visitor, setVisitor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchVisitor = async () => {
+    const fetchVisitorData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
+      if (user) {
+        // Find the visitor record that matches the logged-in email
+        const { data, error } = await supabase
+          .from('visitors')
+          .select('*')
+          .eq('id', user.id) // Assuming Supabase Auth ID matches Visitors ID
+          .single()
+        
+        if (data) setVisitor(data)
       }
-      const { data } = await supabase
-        .from('visitors')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      setVisitor(data)
       setLoading(false)
     }
-    fetchVisitor()
-  }, [router])
+    fetchVisitorData()
+  }, [])
 
-  // Function to download ONLY the badge as an image
-  const downloadBadgeImage = () => {
-    if (badgeRef.current === null) return
-
-    toPng(badgeRef.current, { cacheBust: true })
-      .then((dataUrl) => {
-        const link = document.createElement('a')
-        link.download = `Guj-Gift-Expo-Badge-${visitor?.full_name || 'Visitor'}.png`
-        link.href = dataUrl
-        link.click()
-      })
-      .catch((err) => {
-        console.error('oops, something went wrong!', err)
-      })
-  }
-
-  if (loading) return <div className="p-10 text-center">Generating...</div>
+  if (loading) return <div className="p-10 text-center">Generating your badge...</div>
+  if (!visitor) return <div className="p-10 text-center">Visitor record not found. Please contact support.</div>
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
+      <Card className="w-full max-w-sm bg-white shadow-2xl border-t-8 border-orange-600 overflow-hidden">
+        <CardHeader className="text-center bg-white pb-2">
+          <div className="flex justify-center mb-2">
+             <div className="bg-orange-600 text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest">
+                Visitor Pass
+             </div>
+          </div>
+          <CardTitle className="text-2xl font-black text-gray-900 uppercase">
+            {visitor.full_name}
+          </CardTitle>
+          <p className="text-orange-600 font-bold text-sm">{visitor.company_name}</p>
+        </CardHeader>
+        
+        <CardContent className="flex flex-col items-center p-8 bg-white">
+          {/* THE QR CODE */}
+          <div className="p-4 bg-white border-4 border-gray-100 rounded-2xl shadow-inner mb-6">
+            <QRCodeSVG value={visitor.id} size={200} />
+          </div>
+          
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400 font-bold uppercase">Designation</p>
+            <p className="text-gray-800 font-medium">{visitor.designation || 'Visitor'}</p>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-gray-100 w-full text-center">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+              GUJ GIFT EXPO 2026 • GMDC Ground
+            </p>
+          </div>
+        </CardContent>
+      </Card>
       
-      {/* 1. We wrap the Card in a div with badgeRef */}
-      <div ref={badgeRef} className="bg-gray-100 p-2"> 
-        <Card className="w-[350px] shadow-2xl border-t-[10px] border-orange-500 relative overflow-hidden bg-white">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-full -z-0 opacity-40"></div>
-          <CardContent className="flex flex-col items-center pt-6 pb-4 z-10 relative">
-            
-            <div className="flex flex-col items-center mb-3">
-               <Image src="/event-logo.jpg" alt="Expo" width={160} height={80} className="object-contain mb-2" />
-               <span className="bg-orange-600 text-white px-3 py-0.5 rounded text-[10px] font-black tracking-widest uppercase">
-                 VISITOR PASS
-               </span>
-            </div>
-
-            <div className="text-center mb-4">
-              <h2 className="text-2xl font-black text-gray-900 leading-tight uppercase">{visitor?.full_name}</h2>
-              <p className="text-blue-600 font-bold text-sm uppercase tracking-wide">{visitor?.company_name}</p>
-              <p className="text-gray-500 text-[11px] font-medium italic">{visitor?.designation}</p>
-            </div>
-
-            <div className="bg-white p-2 border border-gray-100 rounded shadow-inner mb-4">
-               <QRCode size={90} value={visitor?.id || "unknown"} viewBox={`0 0 256 256`} />
-            </div>
-
-            <div className="text-center w-full mb-3 bg-gray-50 py-2">
-              <p className="text-[11px] font-black text-gray-800">12th - 14th AUGUST 2026</p>
-              <p className="text-[10px] text-gray-600 font-bold">GMDC University Ground, Ahmedabad</p>
-            </div>
-
-            <div className="w-full border-t border-gray-100 pt-3 flex items-center justify-center gap-3">
-              <Image src="/organizer-logo.jpg" alt="Balaji" width={30} height={30} className="rounded-full" />
-              <div className="text-left">
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Organized By</p>
-                <p className="text-[10px] font-black text-gray-800 leading-none">Shree Balaji Event LLP, Ahmedabad</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-6 flex gap-3">
-        {/* NEW DOWNLOAD IMAGE BUTTON */}
-        <Button onClick={downloadBadgeImage} variant="outline" className="text-xs h-9 bg-white shadow-sm border-orange-200 text-orange-700 hover:bg-orange-50">
-          Download Image
-        </Button>
-        <Button onClick={() => router.push('/exhibitors')} className="bg-blue-600 hover:bg-blue-700 text-xs h-9">
-          View Directory
-        </Button>
-      </div>
+      <p className="mt-6 text-gray-500 text-xs text-center px-10">
+        Please show this QR code at the entry gate for scanning.
+      </p>
     </div>
   )
 }

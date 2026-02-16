@@ -60,6 +60,22 @@ export default function Dashboard() {
             </p>
             <Link href="/exhibitors">
               <Button variant="outline" className="w-full py-6 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold">
+                {/* MY BADGE SECTION */}
+<Card className="border-gray-200 shadow-sm mb-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+  <CardContent className="p-6">
+    <div className="flex justify-between items-center">
+      <div>
+        <h3 className="font-bold text-lg">Your Entry Pass</h3>
+        <p className="text-blue-100 text-xs">Show this at the gate</p>
+      </div>
+      <Link href="/badge">
+        <Button className="bg-white text-blue-700 hover:bg-gray-100 font-bold px-6">
+          VIEW BADGE
+        </Button>
+      </Link>
+    </div>
+  </CardContent>
+</Card>
                 🏢 BROWSE EXHIBITORS
               </Button>
             </Link>
