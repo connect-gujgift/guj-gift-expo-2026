@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { QrReader } from 'react-qr-reader' // IMPORT THE SCANNER
+import { QrReader } from 'react-qr-reader'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -34,7 +34,7 @@ export default function Dashboard() {
 
     if (exhibitor) {
       setRole('exhibitor')
-      fetchLeads(user.id) // Fetch existing leads
+      fetchLeads(user.id)
     } else {
       setRole('visitor')
     }
@@ -51,23 +51,21 @@ export default function Dashboard() {
     if (data) setLeads(data)
   }
 
-  // --- THE SCANNING LOGIC ---
+  // --- SCANNER LOGIC ---
   const handleScan = async (result: any, error: any) => {
     if (result) {
       const visitorId = result?.text
       if (visitorId && visitorId !== scanResult) {
         setScanResult(visitorId)
-        setScanning(false) // Stop camera
+        setScanning(false)
         saveLead(visitorId)
       }
     }
   }
 
   const saveLead = async (visitorId: string) => {
-    // 1. Check if valid UUID (simple check)
     if (visitorId.length < 10) return alert("Invalid QR Code")
 
-    // 2. Save to Database
     const { error } = await supabase
       .from('leads')
       .insert([
@@ -75,13 +73,11 @@ export default function Dashboard() {
       ])
 
     if (error) {
-      alert("Error saving lead (or already scanned!)")
+      alert("Lead already scanned!")
     } else {
       alert("✅ LEAD CAPTURED!")
-      fetchLeads(user.id) // Refresh list
+      fetchLeads(user.id)
     }
-    
-    // Reset for next scan
     setTimeout(() => setScanResult(null), 2000)
   }
 
@@ -101,7 +97,6 @@ export default function Dashboard() {
         <Button variant="outline" onClick={handleLogout} className="text-xs h-8">Sign Out</Button>
       </div>
 
-      {/* VISITOR VIEW */}
       {role === 'visitor' && (
         <div className="grid gap-4">
           <Card className="border-l-4 border-orange-500 shadow-sm">
@@ -123,7 +118,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* EXHIBITOR VIEW */}
       {role === 'exhibitor' && (
         <div className="space-y-6">
           
@@ -133,10 +127,13 @@ export default function Dashboard() {
               <div className="w-full max-w-sm bg-black rounded-xl overflow-hidden relative">
                 <QrReader
                   onResult={handleScan}
-                  constraints={{ facingMode: 'environment' }} // Use Back Camera
+                  constraints={{ facingMode: 'environment' }} // FIX: Added this back!
                   scanDelay={500}
                   className="w-full"
+                  containerStyle={{ width: '100%', height: '100%' }}
+                  videoStyle={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
+                
                 <div className="absolute inset-0 border-4 border-white/30 pointer-events-none"></div>
                 <p className="absolute bottom-4 left-0 right-0 text-center text-white font-bold text-shadow">
                   Pointing at Badge...
@@ -185,7 +182,6 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-
         </div>
       )}
     </div>
