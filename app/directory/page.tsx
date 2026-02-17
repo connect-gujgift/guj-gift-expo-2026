@@ -23,7 +23,6 @@ export default function DirectoryPage() {
     const { data, error } = await supabase
       .from('exhibitors')
       .select('*')
-    
     if (data) setExhibitors(data)
     setLoading(false)
   }
@@ -35,14 +34,14 @@ export default function DirectoryPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return router.push('/login')
 
-    // FIX: Send the raw "meetingTime" (ISO format) which works with all database types
+    // FIX: Using the correct column name 'meeting_time' from your database
     const { error } = await supabase
       .from('meetings')
       .insert([
         {
           visitor_id: user.id,
           exhibitor_id: selectedExhibitor.id,
-          requested_time: meetingTime, // Sends "2026-08-12T14:00"
+          meeting_time: meetingTime, // <--- CHANGED FROM requested_time
           status: 'pending'
         }
       ])
@@ -51,8 +50,7 @@ export default function DirectoryPage() {
     
     if (error) {
       console.error(error)
-      // FIX: Show the REAL error message so we know if it's RLS or Data Type
-      alert(`Failed: ${error.message || error.details}`)
+      alert(`Failed: ${error.message}`)
     } else {
       alert(`Request sent successfully!`)
       setSelectedExhibitor(null)
@@ -62,8 +60,6 @@ export default function DirectoryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-20">
-      
-      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <div>
            <h1 className="text-2xl font-black text-slate-900 uppercase">Exhibitor Directory</h1>
@@ -72,7 +68,6 @@ export default function DirectoryPage() {
         <Button variant="outline" onClick={() => router.push('/dashboard')}>Back</Button>
       </div>
 
-      {/* LIST */}
       {loading ? (
         <div className="text-center text-slate-400 mt-10 italic">Loading companies...</div>
       ) : (
@@ -89,14 +84,12 @@ export default function DirectoryPage() {
                     <h2 className="text-lg font-black text-slate-900 uppercase leading-tight">
                       {exhibitor.company_name || exhibitor.name || "Company Name Missing"}
                     </h2>
-                    
                     {exhibitor.stall_number && (
                       <Badge variant="secondary" className="mt-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
                         📍 Stall: {exhibitor.stall_number}
                       </Badge>
                     )}
                   </div>
-                  
                   <Button 
                     className="w-full bg-slate-900 hover:bg-slate-800 font-bold mt-auto"
                     onClick={() => setSelectedExhibitor(exhibitor)}
@@ -110,7 +103,6 @@ export default function DirectoryPage() {
         </div>
       )}
 
-      {/* MODAL */}
       {selectedExhibitor && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -120,7 +112,6 @@ export default function DirectoryPage() {
             <p className="text-xs text-slate-500 mb-6 font-bold uppercase tracking-wide">
               Schedule Your Visit
             </p>
-            
             <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">
               Select Time (Aug 12 - 14)
             </label>
@@ -132,7 +123,6 @@ export default function DirectoryPage() {
               onChange={(e) => setMeetingTime(e.target.value)}
               className="mb-6 h-12 text-lg"
             />
-
             <div className="flex gap-3">
               <Button 
                 variant="outline" 
