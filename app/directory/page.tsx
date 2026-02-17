@@ -20,7 +20,6 @@ export default function DirectoryPage() {
   }, [])
 
   const fetchExhibitors = async () => {
-    // Select everything from the table
     const { data, error } = await supabase
       .from('exhibitors')
       .select('*')
@@ -30,35 +29,32 @@ export default function DirectoryPage() {
   }
 
   const handleRequestMeeting = async () => {
-    if (!meetingTime) return alert("Please select a valid date and time.")
+    if (!meetingTime) return alert("Please select a time.")
     setSending(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return router.push('/login')
 
-    // Format the date to look nice (e.g., "Aug 12, 2:00 PM")
-    const dateObj = new Date(meetingTime)
-    const formattedTime = dateObj.toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-    })
-
+    // FIX: Send the raw "meetingTime" (ISO format) which works with all database types
     const { error } = await supabase
       .from('meetings')
       .insert([
         {
           visitor_id: user.id,
           exhibitor_id: selectedExhibitor.id,
-          requested_time: formattedTime, // Saves as readable text
+          requested_time: meetingTime, // Sends "2026-08-12T14:00"
           status: 'pending'
         }
       ])
 
     setSending(false)
+    
     if (error) {
-      alert("Error sending request. Please try again.")
       console.error(error)
+      // FIX: Show the REAL error message so we know if it's RLS or Data Type
+      alert(`Failed: ${error.message || error.details}`)
     } else {
-      alert(`Meeting requested for ${formattedTime}!`)
+      alert(`Request sent successfully!`)
       setSelectedExhibitor(null)
       setMeetingTime('')
     }
@@ -76,21 +72,20 @@ export default function DirectoryPage() {
         <Button variant="outline" onClick={() => router.push('/dashboard')}>Back</Button>
       </div>
 
-      {/* EXHIBITOR LIST */}
+      {/* LIST */}
       {loading ? (
         <div className="text-center text-slate-400 mt-10 italic">Loading companies...</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {exhibitors.length === 0 ? (
             <div className="col-span-full text-center py-10 bg-white rounded-xl border border-dashed">
-              <p className="text-slate-500">No exhibitors found yet.</p>
+              <p className="text-slate-500">No exhibitors found.</p>
             </div>
           ) : (
             exhibitors.map((exhibitor) => (
               <Card key={exhibitor.id} className="shadow-sm hover:shadow-md transition-all border-l-4 border-l-blue-600 bg-white">
                 <CardContent className="p-5 flex flex-col gap-3">
                   <div>
-                    {/* ROBUST NAME CHECK: Tries company_name, then name, then fallback */}
                     <h2 className="text-lg font-black text-slate-900 uppercase leading-tight">
                       {exhibitor.company_name || exhibitor.name || "Company Name Missing"}
                     </h2>
@@ -115,7 +110,7 @@ export default function DirectoryPage() {
         </div>
       )}
 
-      {/* BOOKING MODAL */}
+      {/* MODAL */}
       {selectedExhibitor && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -126,7 +121,6 @@ export default function DirectoryPage() {
               Schedule Your Visit
             </p>
             
-            {/* SMART DATE PICKER */}
             <label className="text-xs font-bold text-slate-700 uppercase mb-2 block">
               Select Time (Aug 12 - 14)
             </label>
