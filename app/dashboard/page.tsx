@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { QrReader } from 'react-qr-reader'
+import { Scanner } from '@yudiel/react-qr-scanner' // IMPORT THE NEW SCANNER
 
 export default function Dashboard() {
   const router = useRouter()
@@ -14,7 +14,6 @@ export default function Dashboard() {
   
   // SCANNER STATES
   const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<string | null>(null)
   const [leads, setLeads] = useState<any[]>([])
 
   useEffect(() => {
@@ -51,16 +50,12 @@ export default function Dashboard() {
     if (data) setLeads(data)
   }
 
-  // --- SCANNER LOGIC ---
-  const handleScan = async (result: any, error: any) => {
-    if (result) {
-      const visitorId = result?.text
-      if (visitorId && visitorId !== scanResult) {
-        setScanResult(visitorId)
-        setScanning(false)
-        saveLead(visitorId)
+  // --- NEW SCANNER LOGIC ---
+  const handleScan = (text: string | null) => {
+      if (text) {
+        setScanning(false) // Close camera immediately
+        saveLead(text)
       }
-    }
   }
 
   const saveLead = async (visitorId: string) => {
@@ -73,12 +68,12 @@ export default function Dashboard() {
       ])
 
     if (error) {
-      alert("Lead already scanned!")
+      // 99% of errors are "duplicate key" (already scanned)
+      alert("You have already scanned this visitor!")
     } else {
       alert("✅ LEAD CAPTURED!")
       fetchLeads(user.id)
     }
-    setTimeout(() => setScanResult(null), 2000)
   }
 
   const handleLogout = async () => {
@@ -123,28 +118,35 @@ export default function Dashboard() {
           
           {/* CAMERA SECTION */}
           {scanning ? (
-            <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
-              <div className="w-full max-w-sm bg-black rounded-xl overflow-hidden relative">
-                <QrReader
-                  onResult={handleScan}
-                  constraints={{ facingMode: 'environment' }} // FIX: Added this back!
-                  scanDelay={500}
-                  className="w-full"
-                  containerStyle={{ width: '100%', height: '100%' }}
-                  videoStyle={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+            <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-black rounded-xl overflow-hidden relative border-2 border-slate-700">
                 
-                <div className="absolute inset-0 border-4 border-white/30 pointer-events-none"></div>
-                <p className="absolute bottom-4 left-0 right-0 text-center text-white font-bold text-shadow">
-                  Pointing at Badge...
+                    {/* THE NEW SCANNER COMPONENT */}
+                <Scanner 
+                    onScan={(result) => {
+                        if (result && result.length > 0) {
+                            handleScan(result[0].rawValue)
+                        }
+                    }}
+                    onError={(error) => console.log(error)}
+                    // FIX: Removed 'audio' which caused the error
+                    components={{ finder: false }} 
+                    constraints={{ facingMode: 'environment' }} // Force Back Camera
+                />
+
+                {/* Our Custom Overlay */}
+                <div className="absolute inset-0 border-4 border-blue-500/50 pointer-events-none animate-pulse"></div>
+                <p className="absolute bottom-4 left-0 right-0 text-center text-white font-bold bg-black/50 py-2">
+                  Scanning...
                 </p>
               </div>
+              
               <Button 
                 variant="destructive" 
-                className="mt-8 px-8 py-6 text-lg font-bold"
+                className="mt-8 px-8 py-6 text-lg font-bold w-full max-w-sm"
                 onClick={() => setScanning(false)}
               >
-                CLOSE CAMERA
+                CANCEL SCAN
               </Button>
             </div>
           ) : (
