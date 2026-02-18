@@ -10,7 +10,8 @@ import QRCode from "react-qr-code"
 
 export default function Dashboard() {
   const router = useRouter()
-  // User & Role State
+  
+  // --- STATE MANAGEMENT ---
   const [user, setUser] = useState<any>(null)
   const [role, setRole] = useState<'visitor' | 'exhibitor' | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,7 +26,7 @@ export default function Dashboard() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
 
-  // 1. Auth & Role Check
+  // --- 1. INITIALIZATION ---
   useEffect(() => { checkUser() }, [router])
 
   const checkUser = async () => {
@@ -33,7 +34,7 @@ export default function Dashboard() {
     if (!user) return router.push('/login')
     setUser(user)
 
-    // Check if user is an Exhibitor
+    // Identify Role
     const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
     
     if (exhibitor) {
@@ -46,7 +47,7 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  // 2. Data Fetching
+  // --- 2. DATA FETCHING (Resilient Logic) ---
   const fetchExhibitorLeads = async (id: string) => {
     const { data, error } = await supabase
       .from('leads')
@@ -54,36 +55,36 @@ export default function Dashboard() {
       .eq('exhibitor_id', id)
       .order('created_at', { ascending: false })
     
-    if (error) console.error("Error fetching leads:", error.message)
+    if (error) console.error("Lead Fetch Error:", error.message)
     else setConnections(data || [])
   }
 
   const fetchVisitorConnections = async (id: string) => {
-    // Note: We use a loose join here to ensure data loads even if profile is incomplete
+    // We use a flexible join to ensure the card appears even if the exhibitor profile is incomplete
     const { data, error } = await supabase
       .from('exhibitor_connections')
       .select('id, notes, created_at, exhibitor_id, exhibitors(company_name, stall_number)')
       .eq('visitor_id', id)
       .order('created_at', { ascending: false })
     
-    if (error) console.error("Error fetching connections:", error.message)
+    if (error) console.error("Connection Fetch Error:", error.message)
     else setConnections(data || [])
   }
 
-  // 3. Search Filter
+  // --- 3. SEARCH & FILTER ---
   const filteredData = connections.filter((item) => {
     const mainText = role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name
     const subText = role === 'exhibitor' ? item.visitors?.company_name : item.exhibitors?.stall_number
     const query = searchQuery.toLowerCase()
     
-    // Safety check: handle null values to prevent crashes
+    // Safety check to prevent crashing on null values
     return (mainText || '').toLowerCase().includes(query) || (subText || '').toLowerCase().includes(query)
   })
 
-  // 4. Scan Action
+  // --- 4. SCANNING ACTION ---
   const handleScan = async (scannedId: string) => {
     if (!scannedId) return
-    setScanning(false) // Close camera immediately
+    setScanning(false)
     
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
     const payload = role === 'exhibitor' 
@@ -93,20 +94,19 @@ export default function Dashboard() {
     const { error } = await supabase.from(table).insert([payload])
     
     if (error) {
-      if (error.code === '23505') alert("You have already scanned this code!")
+      if (error.code === '23505') alert("You are already connected!")
       else alert("Scan failed: " + error.message)
     } else {
-      alert("✅ SUCCESS! Connection Saved.")
-      // Refresh list
+      alert("✅ CONNECTION SAVED")
       role === 'exhibitor' ? fetchExhibitorLeads(user.id) : fetchVisitorConnections(user.id)
     }
   }
 
-  // 5. Save Note Action (Verified)
+  // --- 5. NOTE SAVING (With Verification) ---
   const saveNote = async (id: string) => {
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
     
-    // .select() confirms the update actually happened
+    // .select() asks the DB to confirm the update actually happened
     const { data, error } = await supabase
       .from(table)
       .update({ notes: noteText })
@@ -114,9 +114,9 @@ export default function Dashboard() {
       .select()
 
     if (error) {
-      alert("Error saving note: " + error.message)
+      alert("Error: " + error.message)
     } else if (!data || data.length === 0) {
-      alert("❌ SAVE FAILED: Database permission denied. Please check SQL Policies.")
+      alert("❌ SAVE FAILED: Database permission denied. Please run the SQL Policies.")
     } else {
       alert("✅ NOTE SAVED")
       setEditingId(null)
@@ -124,7 +124,7 @@ export default function Dashboard() {
     }
   }
 
-  // 6. Excel Export
+  // --- 6. EXCEL EXPORT ---
   const exportToExcel = () => {
     if (filteredData.length === 0) return alert("No data to export.")
     
@@ -137,28 +137,39 @@ export default function Dashboard() {
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Expo Connections")
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Connections")
     XLSX.writeFile(workbook, `Expo_Data_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400">Loading Dashboard...</div>
 
   return (
-    // Mobile Wrapper with Safe Area Padding
+    // MAIN WRAPPER: Optimized for Mobile Safe Areas
     <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900 overflow-x-hidden touch-pan-y" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
       
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6 pt-safe">
+      {/* HEADER: Clean & Minimal (Logos are now in the Global Layout) */}
+      <div className="flex justify-between items-center mb-6 mt-2">
         <div>
-          <h1 className="text-xl font-black uppercase tracking-tighter italic">
+          <h1 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">
             {role === 'exhibitor' ? 'Lead Manager' : 'Visitor Hub'}
           </h1>
-          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Guj Gift Expo 2026</p>
+          <div className="flex items-center gap-2 mt-1">
+             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live System</p>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold border-2 border-slate-200 text-xs">EXIT</Button>
+        
+        <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
+            className="font-bold border-2 border-slate-200 text-xs bg-white shadow-sm"
+        >
+            LOGOUT
+        </Button>
       </div>
 
-      {/* EXHIBITOR QR DISPLAY TOGGLE */}
+      {/* EXHIBITOR QR TOGGLE */}
       {role === 'exhibitor' && (
         <div className="mb-4">
           {!showMyQR ? (
@@ -205,7 +216,7 @@ export default function Dashboard() {
         <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
       </div>
 
-      {/* CAMERA MODAL (Full Screen) */}
+      {/* CAMERA MODAL (Full Screen Overlay) */}
       {scanning && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-sm aspect-square bg-slate-900 rounded-[3rem] overflow-hidden relative border-4 border-white/20 shadow-2xl">
@@ -215,7 +226,6 @@ export default function Dashboard() {
               }} 
               constraints={{ facingMode: 'environment' }} 
             />
-            {/* Overlay Frame */}
             <div className="absolute inset-0 border-[40px] border-black/50 pointer-events-none"></div>
           </div>
           <Button variant="destructive" className="mt-8 px-12 py-6 text-lg font-black rounded-full" onClick={() => setScanning(false)}>CLOSE CAMERA</Button>
@@ -247,11 +257,11 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-slate-800 uppercase text-sm truncate leading-tight">
-                      {/* FALLBACK LOGIC: If name is null, show placeholder */}
+                      {/* FALLBACK LOGIC: Shows ID if name is missing */}
                       {role === 'exhibitor' ? (item.visitors?.full_name || "Unknown Visitor") : (item.exhibitors?.company_name || "Exhibitor Saved")}
                     </h3>
                     <p className="text-[10px] text-blue-600 font-black uppercase truncate">
-                      {/* FALLBACK LOGIC: If details null, show ID */}
+                      {/* FALLBACK LOGIC: Shows ID if stall is missing */}
                       {role === 'exhibitor' ? item.visitors?.company_name : (item.exhibitors?.stall_number ? `Stall: ${item.exhibitors.stall_number}` : `ID: ${item.exhibitor_id?.substring(0,8)}...`)}
                     </p>
                   </div>
@@ -269,7 +279,7 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <textarea 
                       className="w-full p-3 text-xs border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-400 min-h-[80px]" 
-                      placeholder="Add details (e.g. Follow up date, Order size...)"
+                      placeholder="Add details..."
                       value={noteText} 
                       onChange={(e) => setNoteText(e.target.value)} 
                     />
