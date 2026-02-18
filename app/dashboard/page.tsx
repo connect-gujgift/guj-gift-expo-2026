@@ -147,7 +147,7 @@ export default function Dashboard() {
     // MAIN WRAPPER: Optimized for Mobile Safe Areas
     <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900 overflow-x-hidden touch-pan-y" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
       
-      {/* HEADER: Clean & Minimal (Logos are now in the Global Layout) */}
+      {/* HEADER with Super Admin Button */}
       <div className="flex justify-between items-center mb-6 mt-2">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">
@@ -159,14 +159,29 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
-            className="font-bold border-2 border-slate-200 text-xs bg-white shadow-sm"
-        >
-            LOGOUT
-        </Button>
+        <div className="flex gap-2">
+            {/* SUPER ADMIN BUTTON (Visible only to you) */}
+            {/* CHANGE 'admin@test.com' TO YOUR ACTUAL EMAIL */}
+            {user?.email === 'super@gmail.com' && (
+                <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => router.push('/admin')} 
+                    className="font-bold text-[10px] shadow-md animate-pulse px-2"
+                >
+                    ADMIN
+                </Button>
+            )}
+
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
+                className="font-bold border-2 border-slate-200 text-xs bg-white shadow-sm"
+            >
+                LOGOUT
+            </Button>
+        </div>
       </div>
 
       {/* EXHIBITOR QR TOGGLE */}
