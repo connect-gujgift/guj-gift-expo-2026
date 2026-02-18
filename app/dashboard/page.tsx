@@ -38,41 +38,26 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  // --- DATA FETCHING ---
+  // --- DATA FETCHING (Using phone column from image_22cd86.png and notes from image_afa298.jpg) ---
   const fetchExhibitorLeads = async (id: string) => {
     const { data, error } = await supabase
       .from('leads')
-      .select(`
-        id, 
-        notes, 
-        created_at, 
-        visitors (full_name, company_name, phone)
-      `)
+      .select('id, notes, created_at, visitors(full_name, company_name, phone)')
       .eq('exhibitor_id', id)
       .order('created_at', { ascending: false })
-    
-    if (error) console.error("Exhibitor Fetch Error:", error.message)
-    else setConnections(data || [])
+    if (!error) setConnections(data || [])
   }
 
   const fetchVisitorConnections = async (id: string) => {
     const { data, error } = await supabase
       .from('exhibitor_connections')
-      .select(`
-        id, 
-        notes, 
-        created_at, 
-        exhibitor_id,
-        exhibitors (company_name, stall_number, category)
-      `)
+      .select('id, notes, created_at, exhibitor_id, exhibitors(company_name, stall_number)')
       .eq('visitor_id', id)
       .order('created_at', { ascending: false })
-    
-    if (error) console.error("Visitor Fetch Error:", error.message)
-    else setConnections(data || [])
+    if (!error) setConnections(data || [])
   }
 
-  // --- SEARCH FILTER ---
+  // --- SEARCH LOGIC (Filters by Name or Firm) ---
   const filteredData = connections.filter((item) => {
     const mainText = role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name
     const subText = role === 'exhibitor' ? item.visitors?.company_name : item.exhibitors?.stall_number
@@ -80,7 +65,6 @@ export default function Dashboard() {
     return mainText?.toLowerCase().includes(query) || subText?.toLowerCase().includes(query)
   })
 
-  // --- ACTIONS ---
   const handleScan = async (scannedId: string) => {
     setScanning(false)
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
@@ -116,7 +100,7 @@ export default function Dashboard() {
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Connections")
-    XLSX.writeFile(workbook, `Connections_${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(workbook, `Expo_Leads_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400">Loading Dashboard...</div>
@@ -139,14 +123,17 @@ export default function Dashboard() {
             </Button>
           ) : (
             <Card className="border-4 border-slate-900 bg-white shadow-2xl p-6 flex flex-col items-center animate-in zoom-in duration-300">
-              <div className="flex justify-between w-full mb-4"><span className="text-[10px] font-black uppercase text-slate-400">Scan to save Shourya Stitch</span><Button variant="ghost" size="sm" onClick={() => setShowMyQR(false)} className="h-6 text-[10px] font-black text-red-500 uppercase">Close</Button></div>
+              <div className="flex justify-between w-full mb-4">
+                <span className="text-[10px] font-black uppercase text-slate-400">Visitor Scan for Shoury Stitch</span>
+                <Button variant="ghost" size="sm" onClick={() => setShowMyQR(false)} className="h-6 text-[10px] font-black text-red-500 uppercase">Close</Button>
+              </div>
               <div className="p-4 bg-white border-2 border-slate-50 rounded-3xl"><QRCode value={user.id} size={200} level="H" /></div>
             </Card>
           )}
         </div>
       )}
 
-      {/* COMMON SCAN BUTTON */}
+      {/* SCANNER TRIGGER */}
       {!scanning && (
         <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all ${role === 'exhibitor' ? 'bg-blue-600' : 'bg-orange-600'}`} onClick={() => setScanning(true)}>
           <CardContent className="p-6 flex items-center justify-between">
@@ -156,8 +143,8 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* SEARCH */}
-      <input type="text" placeholder="Search saved connections..." className="w-full p-4 mb-6 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 focus:ring-2 focus:ring-slate-200" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+      {/* SEARCH BAR */}
+      <input type="text" placeholder="Search by name or firm..." className="w-full p-4 mb-6 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 focus:ring-2 focus:ring-slate-200" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
 
       {/* SCANNER MODAL */}
       {scanning && (
@@ -169,17 +156,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* LIST */}
+      {/* LIST SECTION */}
       <div className="space-y-4">
         <div className="flex justify-between items-center px-1">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved ({filteredData.length})</h2>
-            {filteredData.length > 0 && (
-                <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black uppercase text-green-600 bg-green-50 px-3">Excel Export</Button>
-            )}
+          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved ({filteredData.length})</h2>
+          {filteredData.length > 0 && <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black uppercase text-green-600 bg-green-50 px-3">Excel Export</Button>}
         </div>
 
         {filteredData.map((item) => (
-          <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl">
+          <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden">
             <div className="p-5">
               <div className="flex items-center gap-4 mb-3">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white ${role === 'exhibitor' ? 'bg-blue-600' : 'bg-orange-600'}`}>
@@ -187,10 +172,10 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-black text-slate-800 uppercase text-sm truncate">
-                    {role === 'exhibitor' ? item.visitors?.full_name : (item.exhibitors?.company_name || "Unknown Exhibitor")}
+                    {role === 'exhibitor' ? (item.visitors?.full_name || "Unknown Visitor") : (item.exhibitors?.company_name || "Exhibitor Found")}
                   </h3>
                   <p className="text-[10px] text-blue-600 font-bold uppercase truncate">
-                    {role === 'exhibitor' ? item.visitors?.company_name : (item.exhibitors?.stall_number ? `Stall: ${item.exhibitors.stall_number}` : `Exhibitor ID: ${item.exhibitor_id.substring(0,8)}`)}
+                    {role === 'exhibitor' ? item.visitors?.company_name : (item.exhibitors?.stall_number ? `Stall: ${item.exhibitors.stall_number}` : `ID: ${item.exhibitor_id.substring(0,8)}...`)}
                   </p>
                 </div>
               </div>
@@ -207,9 +192,7 @@ export default function Dashboard() {
                   <span className="text-[10px] font-black text-green-600 uppercase">
                     {role === 'exhibitor' ? `📞 ${item.visitors?.phone || 'No Phone'}` : 'SAVED CONNECTION'}
                   </span>
-                  <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>
-                    {item.notes ? 'Edit' : '+ Note'}
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>{item.notes ? 'Edit' : '+ Note'}</Button>
                 </div>
               )}
             </div>
