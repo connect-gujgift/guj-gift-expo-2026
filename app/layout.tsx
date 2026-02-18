@@ -1,14 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GUJ GIFT EXPO 2026",
-  description: "Official App for Gujarat's Premier Corporate Gifting Expo",
+  title: "Guj Gift Expo 2026",
+  description: "Official Lead Manager App",
+  manifest: "/manifest.json", // <--- THIS LINK IS CRITICAL
+};
+
+// This locks the zoom so it feels like an app, not a website
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -18,12 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
-        <Navbar />
-        <main className="flex-grow">
-           {children}
-        </main>
-        <Footer /> {/* <--- Footer goes at the bottom */}
+      <body className={`${inter.className} bg-slate-50 antialiased`}>
+        {children}
       </body>
     </html>
   );

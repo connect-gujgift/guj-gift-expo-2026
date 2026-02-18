@@ -10,20 +10,22 @@ import QRCode from "react-qr-code"
 
 export default function Dashboard() {
   const router = useRouter()
+  // User & Role State
   const [user, setUser] = useState<any>(null)
   const [role, setRole] = useState<'visitor' | 'exhibitor' | null>(null)
   const [loading, setLoading] = useState(true)
   
-  // UI STATES
+  // UI States
   const [scanning, setScanning] = useState(false)
   const [showMyQR, setShowMyQR] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   
-  // DATA STATES
+  // Data States
   const [connections, setConnections] = useState<any[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
 
+  // 1. Auth & Role Check
   useEffect(() => { checkUser() }, [router])
 
   const checkUser = async () => {
@@ -31,8 +33,9 @@ export default function Dashboard() {
     if (!user) return router.push('/login')
     setUser(user)
 
-    // Determine Role
+    // Check if user is an Exhibitor
     const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
+    
     if (exhibitor) {
       setRole('exhibitor')
       fetchExhibitorLeads(user.id)
@@ -43,7 +46,7 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  // --- DATA FETCHING ---
+  // 2. Data Fetching
   const fetchExhibitorLeads = async (id: string) => {
     const { data, error } = await supabase
       .from('leads')
@@ -56,6 +59,7 @@ export default function Dashboard() {
   }
 
   const fetchVisitorConnections = async (id: string) => {
+    // Note: We use a loose join here to ensure data loads even if profile is incomplete
     const { data, error } = await supabase
       .from('exhibitor_connections')
       .select('id, notes, created_at, exhibitor_id, exhibitors(company_name, stall_number)')
@@ -66,20 +70,20 @@ export default function Dashboard() {
     else setConnections(data || [])
   }
 
-  // --- SEARCH FILTER ---
+  // 3. Search Filter
   const filteredData = connections.filter((item) => {
     const mainText = role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name
     const subText = role === 'exhibitor' ? item.visitors?.company_name : item.exhibitors?.stall_number
     const query = searchQuery.toLowerCase()
     
-    // Safety check for null values to prevent crashing
+    // Safety check: handle null values to prevent crashes
     return (mainText || '').toLowerCase().includes(query) || (subText || '').toLowerCase().includes(query)
   })
 
-  // --- ACTION: SCANNING ---
+  // 4. Scan Action
   const handleScan = async (scannedId: string) => {
     if (!scannedId) return
-    setScanning(false)
+    setScanning(false) // Close camera immediately
     
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
     const payload = role === 'exhibitor' 
@@ -89,20 +93,20 @@ export default function Dashboard() {
     const { error } = await supabase.from(table).insert([payload])
     
     if (error) {
-      // Duplicate key error code is 23505
       if (error.code === '23505') alert("You have already scanned this code!")
       else alert("Scan failed: " + error.message)
     } else {
       alert("✅ SUCCESS! Connection Saved.")
+      // Refresh list
       role === 'exhibitor' ? fetchExhibitorLeads(user.id) : fetchVisitorConnections(user.id)
     }
   }
 
-  // --- ACTION: SAVE NOTES (With Verification) ---
+  // 5. Save Note Action (Verified)
   const saveNote = async (id: string) => {
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
     
-    // We request the data back (.select()) to verify the update actually happened
+    // .select() confirms the update actually happened
     const { data, error } = await supabase
       .from(table)
       .update({ notes: noteText })
@@ -112,16 +116,15 @@ export default function Dashboard() {
     if (error) {
       alert("Error saving note: " + error.message)
     } else if (!data || data.length === 0) {
-      alert("❌ SAVE FAILED: Database permission denied. Please run the SQL Policy update.")
+      alert("❌ SAVE FAILED: Database permission denied. Please check SQL Policies.")
     } else {
       alert("✅ NOTE SAVED")
       setEditingId(null)
-      // Refresh to ensure Excel export gets the new note
       role === 'exhibitor' ? fetchExhibitorLeads(user.id) : fetchVisitorConnections(user.id)
     }
   }
 
-  // --- ACTION: EXPORT TO EXCEL ---
+  // 6. Excel Export
   const exportToExcel = () => {
     if (filteredData.length === 0) return alert("No data to export.")
     
@@ -129,7 +132,6 @@ export default function Dashboard() {
       'Date': new Date(item.created_at).toLocaleDateString(),
       'Name/Firm': role === 'exhibitor' ? (item.visitors?.full_name || 'Unknown') : (item.exhibitors?.company_name || 'Unknown'),
       'Contact/Stall': role === 'exhibitor' ? (item.visitors?.phone || 'N/A') : (item.exhibitors?.stall_number || 'N/A'),
-      'Company/Details': role === 'exhibitor' ? (item.visitors?.company_name || 'N/A') : (item.exhibitors?.stall_number || 'N/A'),
       'Notes': item.notes || ''
     }))
 
@@ -142,10 +144,11 @@ export default function Dashboard() {
   if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400">Loading Dashboard...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900">
+    // Mobile Wrapper with Safe Area Padding
+    <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900 overflow-x-hidden touch-pan-y" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
       
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 pt-safe">
         <div>
           <h1 className="text-xl font-black uppercase tracking-tighter italic">
             {role === 'exhibitor' ? 'Lead Manager' : 'Visitor Hub'}
@@ -155,7 +158,7 @@ export default function Dashboard() {
         <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold border-2 border-slate-200 text-xs">EXIT</Button>
       </div>
 
-      {/* EXHIBITOR QR DISPLAY */}
+      {/* EXHIBITOR QR DISPLAY TOGGLE */}
       {role === 'exhibitor' && (
         <div className="mb-4">
           {!showMyQR ? (
@@ -171,13 +174,13 @@ export default function Dashboard() {
               <div className="p-4 bg-white border-2 border-slate-50 rounded-3xl mb-2">
                 <QRCode value={user.id} size={200} level="H" />
               </div>
-              <p className="text-[10px] font-bold text-blue-600 uppercase text-center">Your ID: {user.id.substring(0,8)}...</p>
+              <p className="text-[10px] font-bold text-blue-600 uppercase text-center">Stall ID: {user.id.substring(0,8)}...</p>
             </Card>
           )}
         </div>
       )}
 
-      {/* SCANNER TRIGGER BUTTON */}
+      {/* MAIN SCAN BUTTON */}
       {!scanning && (
         <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all cursor-pointer ${role === 'exhibitor' ? 'bg-blue-600' : 'bg-orange-600'}`} onClick={() => setScanning(true)}>
           <CardContent className="p-6 flex items-center justify-between">
@@ -202,7 +205,7 @@ export default function Dashboard() {
         <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
       </div>
 
-      {/* CAMERA MODAL */}
+      {/* CAMERA MODAL (Full Screen) */}
       {scanning && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-sm aspect-square bg-slate-900 rounded-[3rem] overflow-hidden relative border-4 border-white/20 shadow-2xl">
@@ -244,9 +247,11 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-slate-800 uppercase text-sm truncate leading-tight">
+                      {/* FALLBACK LOGIC: If name is null, show placeholder */}
                       {role === 'exhibitor' ? (item.visitors?.full_name || "Unknown Visitor") : (item.exhibitors?.company_name || "Exhibitor Saved")}
                     </h3>
                     <p className="text-[10px] text-blue-600 font-black uppercase truncate">
+                      {/* FALLBACK LOGIC: If details null, show ID */}
                       {role === 'exhibitor' ? item.visitors?.company_name : (item.exhibitors?.stall_number ? `Stall: ${item.exhibitors.stall_number}` : `ID: ${item.exhibitor_id?.substring(0,8)}...`)}
                     </p>
                   </div>
