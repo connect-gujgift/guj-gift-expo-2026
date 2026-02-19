@@ -30,7 +30,7 @@ export default function AppFooter() {
               💬 WhatsApp Help
             </Button>
           </a>
-          <a href="mailto:info@shreebalajievent.com">
+          <a href="mailto:connect@shreebalajievent.com">
             <Button variant="outline" size="sm" className="border-blue-500 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-50 rounded-full px-6">
               📧 Email Support
             </Button>
