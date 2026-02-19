@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
-import { toPng } from 'html-to-image' // This is the library you just installed
+import { toPng } from 'html-to-image'
 
 export default function VisitorBadge() {
   const router = useRouter()
@@ -29,15 +29,12 @@ export default function VisitorBadge() {
     getProfile()
   }, [router])
 
-  // --- THE DOWNLOAD LOGIC ---
   const downloadBadge = async () => {
     if (badgeRef.current === null) return
-    
     try {
       const dataUrl = await toPng(badgeRef.current, { 
         cacheBust: true,
-        backgroundColor: '#ffffff', // Ensures the background isn't transparent
-        style: { borderRadius: '0' } // Keeps edges clean in the image
+        backgroundColor: '#0f172a', // Navy Blue Background for the export
       })
       const link = document.createElement('a')
       link.download = `GGE2026-Pass-${visitor?.full_name || 'Visitor'}.png`
@@ -45,7 +42,6 @@ export default function VisitorBadge() {
       link.click()
     } catch (err) {
       console.error('Download failed', err)
-      alert("Download failed. Please take a screenshot instead.")
     }
   }
 
@@ -54,54 +50,59 @@ export default function VisitorBadge() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 pt-10 pb-20">
       
-      {/* THE BADGE AREA (Captured by the Ref) */}
-      <div ref={badgeRef} className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border-4 border-slate-900">
+      {/* THE BADGE AREA - NAVY BLUE THEME */}
+      <div ref={badgeRef} className="w-full max-w-sm bg-[#0f172a] rounded-[2.5rem] shadow-2xl overflow-hidden border-4 border-slate-900 text-white">
         
-        {/* Header inside Badge */}
-        <div className="bg-slate-900 p-8 text-center text-white">
-          <h1 className="text-xl font-black uppercase italic tracking-tighter">Entry Pass</h1>
-          <p className="text-[10px] font-bold text-blue-400 tracking-[0.3em] uppercase mt-1">Guj Gift Expo 2026</p>
+        {/* HEADER: Event Logo */}
+        <div className="p-8 flex flex-col items-center border-b border-white/10">
+          <img 
+            src="/event-logo.png" 
+            alt="Guj Gift Expo 2026" 
+            className="h-20 w-auto object-contain mb-4" 
+          />
+          <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none">Entry Pass</h1>
+          <p className="text-[10px] font-bold text-blue-400 tracking-[0.3em] uppercase mt-2">Guj Gift Expo 2026</p>
         </div>
 
-        {/* QR & User Details */}
-        <div className="p-10 flex flex-col items-center bg-white">
-          <div className="p-4 border-4 border-slate-50 rounded-3xl bg-white mb-6">
-            {visitor && (
-              <QRCode value={visitor.id} size={180} level="H" />
-            )}
+        {/* QR & User Details - Navy Background with White Content */}
+        <div className="p-8 flex flex-col items-center text-center">
+          <div className="p-4 border-4 border-white/10 rounded-[2rem] bg-white mb-6">
+            {visitor && <QRCode value={visitor.id} size={180} level="H" />}
           </div>
 
-          <h2 className="text-2xl font-black uppercase text-slate-900 text-center leading-tight">
-            {visitor?.full_name || "Guest Visitor"}
+          <h2 className="text-3xl font-black uppercase leading-tight tracking-tight">
+            {visitor?.full_name || "Visitor"}
           </h2>
-          <p className="text-blue-600 font-bold uppercase text-sm mt-1">
-            {visitor?.company_name || "Official Delegate"}
+          <p className="text-blue-400 font-bold uppercase text-sm mt-1">
+            {visitor?.company_name || "Delegate"}
           </p>
+
+          {/* Venue & Date: August Schedule */}
+          <div className="mt-8 pt-6 border-t border-white/10 w-full space-y-1">
+            <p className="text-xs font-black uppercase tracking-wider">📅 12th Aug - 14th Aug, 2026</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-tight">📍 GMDC University Ground, Ahmedabad</p>
+          </div>
         </div>
 
-        {/* Footer inside Badge */}
-        <div className="bg-slate-50 p-6 border-t-2 border-dashed border-slate-200 text-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase leading-relaxed">
-            Organized by: <br/> Shree Balaji Event LLP
-          </p>
+        {/* FOOTER: Organizer Section */}
+        <div className="bg-white/5 p-8 flex flex-col items-center">
+          <p className="text-[9px] font-black text-slate-500 uppercase mb-4 tracking-widest">Organized by:</p>
+          <img 
+            src="/organizer-logo.png" 
+            alt="Shree Balaji Event LLP" 
+            className="h-14 w-auto object-contain brightness-0 invert opacity-90" 
+          />
+          <p className="text-[9px] font-bold text-slate-500 uppercase mt-3">Shree Balaji Event LLP, Ahmedabad</p>
         </div>
       </div>
 
-      {/* ACTION BUTTONS (Not captured in the image) */}
+      {/* ACTION BUTTONS */}
       <div className="mt-8 flex flex-col gap-3 w-full max-w-sm">
-        <Button 
-          onClick={downloadBadge} 
-          className="w-full py-7 rounded-2xl font-black uppercase tracking-widest bg-blue-600 shadow-lg active:scale-95 transition-transform"
-        >
-          ⬇️ Download Pass (Image)
+        <Button onClick={downloadBadge} className="w-full py-8 rounded-3xl font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-xl transition-all">
+          ⬇️ Download Digital Pass
         </Button>
-        
-        <Button 
-          variant="ghost" 
-          onClick={() => router.push('/dashboard')} 
-          className="w-full py-4 font-black uppercase text-slate-400 text-xs"
-        >
-          Go to Dashboard
+        <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full py-4 font-black uppercase text-slate-500 text-xs">
+          Back to Hub
         </Button>
       </div>
     </div>
