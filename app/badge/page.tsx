@@ -61,19 +61,19 @@ export default function VisitorBadge() {
         className="w-full max-w-[340px] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200"
       >
         
-        {/* LIGHT TEAL HEADER: Lighter to make the logo pop */}
+        {/* LIGHT TEAL HEADER: Maximized Logo */}
         <div className="bg-[#f0f7f7] pt-10 pb-12 flex flex-col items-center px-6">
           <img src="/event-logo.png" alt="GGE 2026" className="h-28 w-auto object-contain scale-125" />
         </div>
 
-        {/* ROLE PILL */}
+        {/* ROLE PILL: Status */}
         <div className="flex justify-center -mt-5">
           <div className="bg-[#ef6c33] text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
             {role === 'exhibitor' ? 'OFFICIAL EXHIBITOR' : 'VALUED VISITOR'}
           </div>
         </div>
 
-        {/* MIDDLE SECTION: QR & INFO */}
+        {/* MIDDLE SECTION: New Placement */}
         <div className="px-8 pt-8 pb-6 flex flex-col items-center">
           <div className="flex w-full items-center gap-6 mb-6">
             <div className="p-2 border-2 border-[#ef6c33] rounded-2xl bg-white shadow-sm">
@@ -81,13 +81,14 @@ export default function VisitorBadge() {
             </div>
             
             <div className="flex-1 text-left">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Role</p>
-              <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight mb-2">
-                {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
-              </p>
-              <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words">
+              {/* PRIMARY: Name */}
+              <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words mb-1">
                 {role === 'exhibitor' ? profile?.company_name : profile?.full_name}
               </h2>
+              {/* SECONDARY: Role */}
+              <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight">
+                {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
+              </p>
             </div>
           </div>
 
@@ -118,7 +119,7 @@ export default function VisitorBadge() {
           </div>
         </div>
 
-        {/* ORGANIZER FOOTER: Clearer logo visibility */}
+        {/* ORGANIZER FOOTER */}
         <div className="p-6 flex items-center justify-center gap-4 bg-white">
            <img src="/organizer-logo.png" alt="Organizer" className="h-10 w-auto object-contain opacity-100" />
            <div className="h-8 w-[1px] bg-slate-200"></div>
