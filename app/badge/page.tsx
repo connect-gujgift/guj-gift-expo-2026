@@ -58,85 +58,80 @@ export default function VisitorBadge() {
       {/* THE COMPACT BADGE */}
       <div 
         ref={badgeRef} 
-        className="w-full max-w-[320px] bg-white rounded-[1.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200"
-        style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23ef6c33' fill-opacity='0.03'/%3E%3C/svg%3E")`
-        }}
+        className="w-full max-w-[340px] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200"
       >
         
-        {/* DARK TEAL HEADER */}
-        <div className="bg-[#0b3d41] p-6 flex flex-col items-center">
-          <img src="/event-logo.png" alt="GGE 2026" className="h-16 w-auto object-contain" />
+        {/* LIGHT TEAL HEADER: Lighter to make the logo pop */}
+        <div className="bg-[#f0f7f7] pt-10 pb-12 flex flex-col items-center px-6">
+          <img src="/event-logo.png" alt="GGE 2026" className="h-28 w-auto object-contain scale-125" />
         </div>
 
         {/* ROLE PILL */}
-        <div className="flex justify-center -mt-3">
-          <div className="bg-[#ef6c33] text-white px-5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md">
+        <div className="flex justify-center -mt-5">
+          <div className="bg-[#ef6c33] text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
             {role === 'exhibitor' ? 'OFFICIAL EXHIBITOR' : 'VALUED VISITOR'}
           </div>
         </div>
 
         {/* MIDDLE SECTION: QR & INFO */}
-        <div className="px-6 pt-6 pb-4 flex flex-col items-center">
-          <div className="flex w-full items-center gap-4 mb-4">
-            {/* QR Code with Orange Border */}
-            <div className="p-2 border-2 border-[#ef6c33] rounded-xl bg-white shadow-sm">
-              {profile && <QRCode value={profile.id} size={100} level="H" fgColor="#0b3d41" />}
+        <div className="px-8 pt-8 pb-6 flex flex-col items-center">
+          <div className="flex w-full items-center gap-6 mb-6">
+            <div className="p-2 border-2 border-[#ef6c33] rounded-2xl bg-white shadow-sm">
+              {profile && <QRCode value={profile.id} size={110} level="H" fgColor="#0b3d41" />}
             </div>
             
-            {/* Short Details */}
             <div className="flex-1 text-left">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Role</p>
-              <p className="text-xs font-black text-[#ef6c33] uppercase leading-tight mb-2">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Role</p>
+              <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight mb-2">
                 {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
               </p>
-              <h2 className="text-xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words">
+              <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words">
                 {role === 'exhibitor' ? profile?.company_name : profile?.full_name}
               </h2>
             </div>
           </div>
 
-          {/* SECONDARY DETAILS (Stall or Category) */}
-          <div className="w-full flex justify-between items-end border-t border-slate-100 pt-3">
+          <div className="w-full flex justify-between items-end border-t border-slate-100 pt-4">
             <div className="text-left">
-               <p className="text-[9px] font-bold text-slate-400 uppercase">Company / Firm</p>
-               <p className="text-xs font-bold text-[#0b3d41] uppercase">{role === 'exhibitor' ? profile?.category : (profile?.company_name || 'Individual')}</p>
+               <p className="text-[10px] font-bold text-slate-400 uppercase">Company / Firm</p>
+               <p className="text-sm font-bold text-[#0b3d41] uppercase">{role === 'exhibitor' ? profile?.category : (profile?.company_name || 'Individual Visitor')}</p>
             </div>
             {role === 'exhibitor' && profile?.stall_number && (
-              <div className="bg-[#0b3d41] text-white px-3 py-1 rounded-lg text-right">
-                <p className="text-[8px] opacity-70 uppercase font-bold">Stall</p>
-                <p className="text-lg font-black leading-none">{profile.stall_number}</p>
+              <div className="bg-[#0b3d41] text-white px-4 py-2 rounded-xl text-right">
+                <p className="text-[9px] opacity-70 uppercase font-bold">Stall</p>
+                <p className="text-xl font-black leading-none">{profile.stall_number}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* INFO STRIP (Dark Teal) */}
-        <div className="bg-[#0b3d41] text-white px-6 py-4 flex justify-between items-center">
+        {/* INFO STRIP */}
+        <div className="bg-[#0b3d41] text-white px-8 py-5 flex justify-between items-center">
           <div>
-            <p className="text-[8px] opacity-60 uppercase font-bold">Date</p>
-            <p className="text-[10px] font-black uppercase">12-14 Aug 2026</p>
+            <p className="text-[9px] opacity-60 uppercase font-bold tracking-widest">Date</p>
+            <p className="text-xs font-black uppercase tracking-tighter">12-14 Aug 2026</p>
           </div>
-          <div className="h-6 w-[1px] bg-white/20"></div>
+          <div className="h-8 w-[1px] bg-white/20"></div>
           <div className="text-right">
-            <p className="text-[8px] opacity-60 uppercase font-bold">Location</p>
-            <p className="text-[10px] font-black uppercase">GMDC Ground, Ahmedabad</p>
+            <p className="text-[9px] opacity-60 uppercase font-bold tracking-widest">Location</p>
+            <p className="text-xs font-black uppercase tracking-tighter text-right">GMDC Ground, Ahmedabad</p>
           </div>
         </div>
 
-        {/* ORGANIZER FOOTER */}
-        <div className="p-4 flex items-center justify-center gap-3 bg-white">
-           <img src="/organizer-logo.png" alt="Organizer" className="h-8 w-auto grayscale opacity-50" />
-           <p className="text-[8px] font-bold text-slate-400 uppercase leading-tight border-l pl-3 border-slate-200">
-              Organized by <br/> Shree Balaji Event LLP
+        {/* ORGANIZER FOOTER: Clearer logo visibility */}
+        <div className="p-6 flex items-center justify-center gap-4 bg-white">
+           <img src="/organizer-logo.png" alt="Organizer" className="h-10 w-auto object-contain opacity-100" />
+           <div className="h-8 w-[1px] bg-slate-200"></div>
+           <p className="text-[9px] font-bold text-slate-500 uppercase leading-tight tracking-tighter">
+              Organized by <br/> <span className="text-[#0b3d41]">Shree Balaji Event LLP</span>
            </p>
         </div>
       </div>
 
       {/* DOWNLOAD ACTIONS */}
-      <div className="mt-6 w-full max-w-[320px] space-y-3">
-        <Button onClick={downloadBadge} className="w-full h-14 rounded-2xl bg-[#ef6c33] text-white font-black uppercase tracking-widest shadow-lg hover:bg-[#d45a27] transition-all">
-          Download Pass
+      <div className="mt-8 w-full max-w-[340px] space-y-3">
+        <Button onClick={downloadBadge} className="w-full h-16 rounded-2xl bg-[#ef6c33] text-white font-black uppercase tracking-widest shadow-xl hover:bg-[#d45a27] transition-all">
+          Download Digital Pass
         </Button>
         <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full text-slate-400 font-bold uppercase text-[10px]">
           Skip to Dashboard
