@@ -64,15 +64,15 @@ export default function VisitorBadge() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 pt-6 pb-20">
       
-      {/* COMPACT WHITE THEME BADGE */}
+      {/* THE PASS AREA */}
       <div ref={badgeRef} className="w-full max-w-[340px] bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
         
-        {/* HEADER: Maximized Event Logo */}
+        {/* HEADER: Maximized Logo Area */}
         <div className="pt-8 pb-4 flex flex-col items-center border-b border-slate-100 px-4">
           <img 
             src="/event-logo.png" 
             alt="Guj Gift Expo 2026" 
-            className="h-24 w-auto object-contain mb-1 scale-110" // Increased size and scale
+            className="h-24 w-auto object-contain mb-1 scale-110" 
           />
           <h1 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mt-2">
             {role === 'exhibitor' ? 'Exhibitor Pass' : 'Entry Pass'}
@@ -82,8 +82,15 @@ export default function VisitorBadge() {
 
         {/* QR & User Details */}
         <div className="px-6 py-5 flex flex-col items-center text-center">
-          <div className="p-3 border-2 border-slate-50 rounded-2xl bg-white mb-4 shadow-sm">
-            {profile && <QRCode value={profile.id} size={140} level="H" />}
+          <div className="p-4 border-2 border-slate-50 rounded-[2rem] bg-white mb-4 shadow-sm">
+            {profile && (
+              <QRCode 
+                value={profile.id} 
+                size={140} 
+                level="H" 
+                fgColor="#1e3a8a" // Premium Deep Blue QR color
+              />
+            )}
           </div>
 
           <h2 className="text-2xl font-black uppercase text-slate-900 leading-tight">
@@ -93,21 +100,21 @@ export default function VisitorBadge() {
             {role === 'exhibitor' ? profile?.category : profile?.company_name}
           </p>
 
-          {/* CONDITIONAL STALL NUMBER: Exhibitors Only */}
+          {/* STALL NUMBER: Exhibitors Only */}
           {role === 'exhibitor' && profile?.stall_number && (
             <div className="mt-2 bg-blue-50 px-4 py-1 rounded-full border border-blue-100">
               <p className="text-[11px] font-black text-blue-700 uppercase">Stall: {profile.stall_number}</p>
             </div>
           )}
 
-          {/* Venue & Date */}
+          {/* Updated Date & Venue: August 2026 */}
           <div className="mt-4 pt-4 border-t border-slate-100 w-full">
             <p className="text-[10px] font-black text-slate-800 uppercase">📅 12th Aug - 14th Aug, 2026</p>
             <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">📍 GMDC University Ground, Ahmedabad</p>
           </div>
         </div>
 
-        {/* COMPACT FOOTER: Organizer Section */}
+        {/* FOOTER: Organizer Section */}
         <div className="bg-slate-50 py-4 px-6 flex flex-col items-center border-t border-dashed border-slate-200">
           <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Organized by:</p>
           <img 
@@ -121,8 +128,8 @@ export default function VisitorBadge() {
 
       {/* ACTION BUTTONS */}
       <div className="mt-6 flex flex-col gap-2 w-full max-w-[340px]">
-        <Button onClick={downloadBadge} className="w-full py-6 rounded-2xl font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-lg transition-all">
-          ⬇️ Download Pass
+        <Button onClick={downloadBadge} className="w-full py-6 rounded-2xl font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-lg">
+          ⬇️ Download Digital Pass
         </Button>
         <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full py-2 font-black uppercase text-slate-400 text-[10px]">
           Back to Hub
