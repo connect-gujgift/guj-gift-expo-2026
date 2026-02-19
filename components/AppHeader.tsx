@@ -4,12 +4,14 @@ import React from 'react'
 
 export default function AppHeader() {
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b-2 border-slate-200 sticky top-0 z-50 shadow-sm flex justify-center items-center py-4" style={{ paddingTop: 'calc(16px + env(safe-area-inset-top))' }}>
+    // Updated: Changed bg-white to bg-transparent and removed border/shadow for a clean look
+    <header className="bg-transparent sticky top-0 z-50 flex justify-center items-center py-4" style={{ paddingTop: 'calc(16px + env(safe-area-inset-top))' }}>
       
-      {/* Centered Event Logo (Made significantly larger) */}
+      {/* Centered Event Logo */}
       <img 
         src="/event-logo.png" 
         alt="Guj Gift Expo" 
+        // Ensure your event-logo.png is a transparent PNG for the best result
         className="h-16 md:h-24 w-auto object-contain drop-shadow-sm transition-all" 
         onError={(e) => {
           e.currentTarget.style.display = 'none';

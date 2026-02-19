@@ -4,15 +4,16 @@ import React from 'react'
 
 export default function AppFooter() {
   return (
-    <footer className="bg-white border-t border-slate-200 pt-6 mt-auto w-full" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
-      <div className="flex flex-col items-center justify-center">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-          Organized By
+    <footer className="bg-white border-t border-slate-200 pt-6 pb-8 mt-auto w-full" style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }}>
+      <div className="flex flex-col items-center justify-center text-center">
+        {/* Updated Organizer Text */}
+        <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 px-4">
+          Organized by- Shree Balaji Event LLP, Ahmedabad
         </span>
         <img 
           src="/organizer-logo.png" 
           alt="Shree Balaji" 
-          className="h-12 md:h-16 w-auto object-contain drop-shadow-sm"
+          className="h-14 md:h-18 w-auto object-contain drop-shadow-sm"
           onError={(e) => {
             e.currentTarget.style.display = 'none';
             const span = document.createElement('span');
