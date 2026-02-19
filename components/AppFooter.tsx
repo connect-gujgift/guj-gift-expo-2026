@@ -1,9 +1,16 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 
 export default function AppFooter() {
+  const router = useRouter()
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <footer className="bg-white border-t border-slate-200 pt-12 pb-14 mt-auto w-full">
       <div className="flex flex-col items-center justify-center text-center px-4">
@@ -23,22 +30,34 @@ export default function AppFooter() {
           Organized by- Shree Balaji Event LLP, Ahmedabad
         </p>
 
-        {/* 3. NEW: Help & Contact Buttons */}
-        <div className="flex flex-wrap justify-center gap-3">
-          <a href="https://wa.me/+916358260767" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm" className="border-green-500 text-green-600 font-bold text-[10px] uppercase hover:bg-green-50 rounded-full px-6">
-              💬 WhatsApp Help
+        {/* 3. Navigation & Directory Buttons */}
+        <div className="flex flex-col gap-3 w-full max-w-[280px]">
+          {/* Main Directory Button */}
+          <Button 
+            onClick={() => router.push('/directory')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-6 rounded-2xl shadow-lg uppercase italic text-sm"
+          >
+            📂 View Stall Directory
+          </Button>
+
+          <div className="flex gap-2">
+            <a href="https://wa.me/+916358260767" target="_blank" rel="noopener noreferrer" className="flex-1">
+              <Button variant="outline" className="w-full border-green-500 text-green-600 font-bold text-[10px] uppercase h-10 rounded-xl">
+                💬 WhatsApp
+              </Button>
+            </a>
+            <Button 
+              variant="outline" 
+              onClick={scrollToTop}
+              className="flex-1 border-slate-200 text-slate-400 font-bold text-[10px] uppercase h-10 rounded-xl"
+            >
+              ⬆️ Top
             </Button>
-          </a>
-          <a href="mailto:connect@shreebalajievent.com">
-            <Button variant="outline" size="sm" className="border-blue-500 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-50 rounded-full px-6">
-              📧 Email Support
-            </Button>
-          </a>
+          </div>
         </div>
         
-        <p className="mt-6 text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">
-          Official Lead Management System v2.0
+        <p className="mt-8 text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">
+          Guj Gift Expo 2026 • Lead Management System
         </p>
       </div>
     </footer>
