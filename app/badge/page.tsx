@@ -18,14 +18,14 @@ export default function VisitorBadge() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/login')
 
-      // 1. Check if user is an Exhibitor
+      // Check Exhibitor Table
       const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
 
       if (exhibitor) {
         setProfile(exhibitor)
         setRole('exhibitor')
       } else {
-        // 2. Check if user is a Visitor
+        // Fallback to Visitor Table
         const { data: visitor } = await supabase.from('visitors').select('*').eq('id', user.id).single()
         setProfile(visitor)
         setRole('visitor')
@@ -68,43 +68,41 @@ export default function VisitorBadge() {
           <img src="/event-logo.png" alt="GGE 2026" className="h-28 w-auto object-contain scale-125" />
         </div>
 
-        {/* ROLE PILL: Color change to distinguish Exhibitor vs Visitor */}
+        {/* ROLE PILL */}
         <div className="flex justify-center -mt-5">
           <div className={`${role === 'exhibitor' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg`}>
             {role === 'exhibitor' ? 'OFFICIAL EXHIBITOR' : 'VALUED VISITOR'}
           </div>
         </div>
 
-        {/* MIDDLE SECTION: New Placement */}
-        <div className="px-8 pt-8 pb-6 flex flex-col items-center">
-          <div className="flex w-full items-center gap-6 mb-6">
-            <div className="p-2 border-2 border-[#ef6c33] rounded-2xl bg-white shadow-sm">
-              {profile && <QRCode value={profile.id} size={110} level="H" fgColor="#0b3d41" />}
-            </div>
-            
-            <div className="flex-1 text-left">
-              {/* PRIMARY DISPLAY: Exhibitor Name (Person) or Visitor Name */}
-              <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words mb-1">
-                {role === 'exhibitor' ? (profile?.full_name || 'Exhibitor Name') : profile?.full_name}
-              </h2>
-              {/* SECONDARY: Role */}
-              <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight">
-                {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
-              </p>
-            </div>
+        {/* MIDDLE SECTION: Stacked Layout (Name Above QR) */}
+        <div className="px-8 pt-8 pb-6 flex flex-col items-center text-center">
+          
+          {/* 1. NAME & ROLE (Moved to Top) */}
+          <div className="mb-5">
+            <h2 className="text-3xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words mb-2">
+              {role === 'exhibitor' ? (profile?.full_name || 'Exhibitor Name') : profile?.full_name}
+            </h2>
+            <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight tracking-widest">
+              {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
+            </p>
           </div>
 
-          <div className="w-full flex justify-between items-center border-t border-slate-100 pt-4">
-            <div className="text-left">
+          {/* 2. QR CODE (Centered Below Name) */}
+          <div className="p-3 border-2 border-[#ef6c33] rounded-[2rem] bg-white shadow-sm mb-6 inline-block">
+            {profile && <QRCode value={profile.id} size={140} level="H" fgColor="#0b3d41" />}
+          </div>
+
+          {/* 3. COMPANY & STALL INFO */}
+          <div className="w-full flex justify-between items-center border-t border-slate-100 pt-4 text-left">
+            <div>
                <p className="text-[10px] font-bold text-slate-400 uppercase">Company / Firm</p>
-               {/* Fixed: Displays Company Name here now */}
-               <p className="text-sm font-bold text-[#0b3d41] uppercase max-w-[180px]">
+               <p className="text-sm font-bold text-[#0b3d41] uppercase max-w-[180px] leading-tight mt-0.5">
                  {profile?.company_name || 'Individual Visitor'}
                </p>
             </div>
-            {/* Improved Stall Section */}
             {role === 'exhibitor' && profile?.stall_number && (
-              <div className="bg-[#0b3d41] text-white p-3 rounded-2xl text-center min-w-[70px]">
+              <div className="bg-[#0b3d41] text-white p-3 rounded-2xl text-center min-w-[70px] ml-2">
                 <p className="text-[8px] opacity-70 uppercase font-black">Stall</p>
                 <p className="text-xl font-black leading-none">{profile.stall_number}</p>
               </div>
