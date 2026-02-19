@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-
-// This imports the interactive header we just made
-// IMPORTANT: Ensure AppHeader.tsx is in the 'components' folder, not 'components/ui'
 import AppHeader from "@/components/AppHeader"; 
+import AppFooter from "@/components/AppFooter"; // IMPORT THE NEW FOOTER
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,8 +17,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: "cover", // Ensures content extends behind the iPhone notch
-  themeColor: "#ffffff", // Matches the white header
+  viewportFit: "cover", 
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -30,16 +28,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-slate-50 antialiased`}>
+      {/* 'flex flex-col min-h-screen' ensures the footer stays at the bottom */}
+      <body className={`${inter.className} bg-slate-50 antialiased flex flex-col min-h-screen`}>
         
-        {/* GLOBAL HEADER (Client Component) */}
         <AppHeader />
 
-        {/* MAIN CONTENT WRAPPER */}
-        {/* 'pb-safe-area-inset-bottom' handles the iPhone home bar space */}
-        <main className="min-h-screen pb-safe-area-inset-bottom">
+        {/* 'flex-grow' pushes the footer down below the content */}
+        <main className="flex-grow">
           {children}
         </main>
+
+        <AppFooter />
 
       </body>
     </html>
