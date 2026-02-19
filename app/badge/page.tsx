@@ -1,12 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
+import { toPng } from 'html-to-image' // Helper to save as image
 
 export default function VisitorBadge() {
   const router = useRouter()
+  const badgeRef = useRef<HTMLDivElement>(null)
   const [visitor, setVisitor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -18,8 +20,7 @@ export default function VisitorBadge() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return router.push('/login')
 
-    // Fetch from visitors table
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('visitors')
       .select('*')
       .eq('id', user.id)
@@ -29,31 +30,40 @@ export default function VisitorBadge() {
     setLoading(false)
   }
 
+  const downloadBadge = async () => {
+    if (badgeRef.current === null) return
+    
+    try {
+      const dataUrl = await toPng(badgeRef.current, { cacheBust: true })
+      const link = document.createElement('a')
+      link.download = `GGE2026-Pass-${visitor?.full_name || 'Visitor'}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('Download failed', err)
+      alert("Please take a screenshot instead.")
+    }
+  }
+
   if (loading) return <div className="p-20 text-center font-black">GENERATING PASS...</div>
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 pt-10 pb-20">
       
-      {/* THE DIGITAL BADGE */}
-      <div className="w-full max-w-sm bg-white rounded-[3rem] shadow-2xl overflow-hidden border-4 border-slate-900">
+      {/* WRAPPER FOR IMAGE CAPTURE */}
+      <div ref={badgeRef} className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border-4 border-slate-900">
         
-        {/* TOP SECTION: Branding */}
+        {/* BRANDING */}
         <div className="bg-slate-900 p-8 text-center text-white">
-          <h1 className="text-xl font-black uppercase italic tracking-tighter">Visitor Pass</h1>
+          <h1 className="text-xl font-black uppercase italic tracking-tighter">Entry Pass</h1>
           <p className="text-[10px] font-bold text-blue-400 tracking-[0.3em] uppercase mt-1">Guj Gift Expo 2026</p>
         </div>
 
-        {/* MIDDLE SECTION: QR CODE */}
+        {/* QR CODE & DETAILS */}
         <div className="p-10 flex flex-col items-center bg-white">
           <div className="p-4 border-4 border-slate-50 rounded-3xl bg-white mb-6">
-            {visitor ? (
-              <QRCode 
-                value={visitor.id} 
-                size={180} 
-                level="H" // High error correction for fast scanning
-              />
-            ) : (
-              <div className="w-[180px] h-[180px] bg-slate-100 animate-pulse rounded-xl" />
+            {visitor && (
+              <QRCode value={visitor.id} size={180} level="H" />
             )}
           </div>
 
@@ -65,25 +75,29 @@ export default function VisitorBadge() {
           </p>
         </div>
 
-        {/* BOTTOM SECTION: Instructions */}
+        {/* FOOTER OF BADGE */}
         <div className="bg-slate-50 p-6 border-t-2 border-dashed border-slate-200 text-center">
           <p className="text-[10px] font-black text-slate-400 uppercase leading-relaxed">
-            Please show this QR code at the <br/> 
-            entry gate for verification.
-          </p>
-          <p className="text-[9px] font-bold text-red-500 uppercase mt-4 animate-pulse">
-            📸 Take a Screenshot Now
+            Organized by: <br/> Shree Balaji Event LLP
           </p>
         </div>
       </div>
 
-      {/* ACTION BUTTONS */}
+      {/* BUTTONS (Hidden in the downloaded image) */}
       <div className="mt-8 flex flex-col gap-3 w-full max-w-sm">
-        <Button onClick={() => router.push('/dashboard')} className="w-full py-6 rounded-2xl font-black uppercase tracking-widest bg-slate-900">
-          Go to Dashboard
+        <Button 
+          onClick={downloadBadge} 
+          className="w-full py-7 rounded-2xl font-black uppercase tracking-widest bg-blue-600 shadow-lg active:scale-95 transition-transform"
+        >
+          ⬇️ Download Pass (Image)
         </Button>
-        <Button variant="outline" onClick={() => window.print()} className="w-full py-6 rounded-2xl font-black uppercase tracking-widest border-2">
-          Save as PDF
+        
+        <Button 
+          variant="ghost" 
+          onClick={() => router.push('/dashboard')} 
+          className="w-full py-4 font-black uppercase text-slate-400 text-xs"
+        >
+          Skip to Dashboard
         </Button>
       </div>
     </div>
