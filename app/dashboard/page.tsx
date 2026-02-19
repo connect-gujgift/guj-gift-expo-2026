@@ -47,7 +47,7 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  // --- 2. DATA FETCHING (Resilient Logic) ---
+  // --- 2. DATA FETCHING ---
   const fetchExhibitorLeads = async (id: string) => {
     const { data, error } = await supabase
       .from('leads')
@@ -60,7 +60,6 @@ export default function Dashboard() {
   }
 
   const fetchVisitorConnections = async (id: string) => {
-    // We use a flexible join to ensure the card appears even if the exhibitor profile is incomplete
     const { data, error } = await supabase
       .from('exhibitor_connections')
       .select('id, notes, created_at, exhibitor_id, exhibitors(company_name, stall_number)')
@@ -76,8 +75,6 @@ export default function Dashboard() {
     const mainText = role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name
     const subText = role === 'exhibitor' ? item.visitors?.company_name : item.exhibitors?.stall_number
     const query = searchQuery.toLowerCase()
-    
-    // Safety check to prevent crashing on null values
     return (mainText || '').toLowerCase().includes(query) || (subText || '').toLowerCase().includes(query)
   })
 
@@ -94,7 +91,7 @@ export default function Dashboard() {
     const { error } = await supabase.from(table).insert([payload])
     
     if (error) {
-      if (error.code === '23505') alert("You are already connected!")
+      if (error.code === '23505') alert("Already connected!")
       else alert("Scan failed: " + error.message)
     } else {
       alert("✅ CONNECTION SAVED")
@@ -102,22 +99,17 @@ export default function Dashboard() {
     }
   }
 
-  // --- 5. NOTE SAVING (With Verification) ---
+  // --- 5. NOTE SAVING ---
   const saveNote = async (id: string) => {
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
-    
-    // .select() asks the DB to confirm the update actually happened
     const { data, error } = await supabase
       .from(table)
       .update({ notes: noteText })
       .eq('id', id)
       .select()
 
-    if (error) {
-      alert("Error: " + error.message)
-    } else if (!data || data.length === 0) {
-      alert("❌ SAVE FAILED: Database permission denied. Please run the SQL Policies.")
-    } else {
+    if (error) alert("Error: " + error.message)
+    else {
       alert("✅ NOTE SAVED")
       setEditingId(null)
       role === 'exhibitor' ? fetchExhibitorLeads(user.id) : fetchVisitorConnections(user.id)
@@ -127,30 +119,27 @@ export default function Dashboard() {
   // --- 6. EXCEL EXPORT ---
   const exportToExcel = () => {
     if (filteredData.length === 0) return alert("No data to export.")
-    
     const dataToExport = filteredData.map(item => ({
       'Date': new Date(item.created_at).toLocaleDateString(),
       'Name/Firm': role === 'exhibitor' ? (item.visitors?.full_name || 'Unknown') : (item.exhibitors?.company_name || 'Unknown'),
       'Contact/Stall': role === 'exhibitor' ? (item.visitors?.phone || 'N/A') : (item.exhibitors?.stall_number || 'N/A'),
       'Notes': item.notes || ''
     }))
-
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Connections")
-    XLSX.writeFile(workbook, `Expo_Data_${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(workbook, `GGE_Data_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400">Loading Dashboard...</div>
 
   return (
-    // MAIN WRAPPER: Optimized for Mobile Safe Areas
-    <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900 overflow-x-hidden touch-pan-y" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
+    <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
       
-      {/* HEADER with Super Admin Button */}
+      {/* HEADER WITH ADMIN TOGGLE */}
       <div className="flex justify-between items-center mb-6 mt-2">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">
+          <h1 className="text-2xl font-black uppercase tracking-tighter italic">
             {role === 'exhibitor' ? 'Lead Manager' : 'Visitor Hub'}
           </h1>
           <div className="flex items-center gap-2 mt-1">
@@ -160,47 +149,43 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-2">
-            {/* SUPER ADMIN BUTTON (Visible only to you) */}
-            {/* CHANGE 'admin@test.com' TO YOUR ACTUAL EMAIL */}
-            {user?.email === 'super@gmail.com' && (
-                <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    onClick={() => router.push('/admin')} 
-                    className="font-bold text-[10px] shadow-md animate-pulse px-2"
-                >
-                    ADMIN
-                </Button>
+            {/* REPLACE WITH YOUR EMAIL */}
+            {user?.email === 'admin@test.com' && (
+                <Button variant="destructive" size="sm" onClick={() => router.push('/admin')} className="font-bold text-[10px] shadow-md animate-pulse">ADMIN</Button>
             )}
-
-            <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
-                className="font-bold border-2 border-slate-200 text-xs bg-white shadow-sm"
-            >
-                LOGOUT
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold border-2 text-xs bg-white">LOGOUT</Button>
         </div>
       </div>
+
+      {/* --- VISITOR ENTRY PASS CARD (Added as requested) --- */}
+      {role === 'visitor' && !scanning && (
+        <Card 
+          className="border-0 shadow-xl bg-slate-900 text-white mb-4 active:scale-95 transition-all cursor-pointer overflow-hidden relative" 
+          onClick={() => router.push('/badge')}
+        >
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="z-10">
+              <h2 className="text-xl font-black uppercase italic leading-none">My Entry Pass</h2>
+              <p className="text-[10px] font-bold uppercase text-blue-400 mt-2 tracking-widest">View & Download QR Badge</p>
+            </div>
+            <div className="text-4xl opacity-40">🎫</div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-600 rounded-full blur-3xl opacity-30"></div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* EXHIBITOR QR TOGGLE */}
       {role === 'exhibitor' && (
         <div className="mb-4">
           {!showMyQR ? (
-            <Button onClick={() => setShowMyQR(true)} className="w-full bg-slate-900 text-white font-black py-6 rounded-2xl shadow-lg uppercase italic text-sm">
-              Show My QR Code 📱
-            </Button>
+            <Button onClick={() => setShowMyQR(true)} className="w-full bg-slate-900 text-white font-black py-6 rounded-2xl shadow-lg uppercase italic text-sm">Show My QR Code 📱</Button>
           ) : (
-            <Card className="border-4 border-slate-900 bg-white shadow-2xl p-6 flex flex-col items-center animate-in zoom-in duration-300">
+            <Card className="border-4 border-slate-900 bg-white p-6 flex flex-col items-center animate-in zoom-in">
               <div className="flex justify-between w-full mb-4">
                 <span className="text-[10px] font-black uppercase text-slate-400">Let Visitor Scan This</span>
-                <Button variant="ghost" size="sm" onClick={() => setShowMyQR(false)} className="h-6 text-[10px] font-black text-red-500 uppercase">Close</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowMyQR(false)} className="h-6 text-[10px] font-black text-red-500">Close</Button>
               </div>
-              <div className="p-4 bg-white border-2 border-slate-50 rounded-3xl mb-2">
-                <QRCode value={user.id} size={200} level="H" />
-              </div>
-              <p className="text-[10px] font-bold text-blue-600 uppercase text-center">Stall ID: {user.id.substring(0,8)}...</p>
+              <QRCode value={user.id} size={200} level="H" />
             </Card>
           )}
         </div>
@@ -224,24 +209,18 @@ export default function Dashboard() {
         <input 
           type="text" 
           placeholder={role === 'exhibitor' ? "Search Name or Firm..." : "Search Exhibitor or Stall..."}
-          className="w-full p-4 pl-12 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 focus:ring-2 focus:ring-slate-200 font-medium" 
+          className="w-full p-4 pl-12 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 font-medium" 
           value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)} 
         />
         <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
       </div>
 
-      {/* CAMERA MODAL (Full Screen Overlay) */}
+      {/* CAMERA MODAL */}
       {scanning && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-sm aspect-square bg-slate-900 rounded-[3rem] overflow-hidden relative border-4 border-white/20 shadow-2xl">
-            <Scanner 
-              onScan={(res) => {
-                if (res && res.length > 0) handleScan(res[0].rawValue)
-              }} 
-              constraints={{ facingMode: 'environment' }} 
-            />
-            <div className="absolute inset-0 border-[40px] border-black/50 pointer-events-none"></div>
+          <div className="w-full max-w-sm aspect-square bg-slate-900 rounded-[3rem] overflow-hidden relative border-4 border-white/20">
+            <Scanner onScan={(res) => { if (res && res.length > 0) handleScan(res[0].rawValue) }} />
           </div>
           <Button variant="destructive" className="mt-8 px-12 py-6 text-lg font-black rounded-full" onClick={() => setScanning(false)}>CLOSE CAMERA</Button>
         </div>
@@ -251,17 +230,11 @@ export default function Dashboard() {
       <div className="space-y-4">
         <div className="flex justify-between items-center px-1">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved ({filteredData.length})</h2>
-          {filteredData.length > 0 && (
-            <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black uppercase text-green-600 bg-green-50 px-3">
-              Download Excel
-            </Button>
-          )}
+          {filteredData.length > 0 && <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black text-green-600 bg-green-50">Download Excel</Button>}
         </div>
 
         {filteredData.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-3xl">
-            <p className="text-slate-400 font-bold uppercase text-xs">No connections found</p>
-          </div>
+          <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-3xl"><p className="text-slate-400 font-bold uppercase text-xs">No connections found</p></div>
         ) : (
           filteredData.map((item) => (
             <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden mb-3">
@@ -271,46 +244,20 @@ export default function Dashboard() {
                     {(role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name)?.charAt(0) || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-slate-800 uppercase text-sm truncate leading-tight">
-                      {/* FALLBACK LOGIC: Shows ID if name is missing */}
-                      {role === 'exhibitor' ? (item.visitors?.full_name || "Unknown Visitor") : (item.exhibitors?.company_name || "Exhibitor Saved")}
-                    </h3>
-                    <p className="text-[10px] text-blue-600 font-black uppercase truncate">
-                      {/* FALLBACK LOGIC: Shows ID if stall is missing */}
-                      {role === 'exhibitor' ? item.visitors?.company_name : (item.exhibitors?.stall_number ? `Stall: ${item.exhibitors.stall_number}` : `ID: ${item.exhibitor_id?.substring(0,8)}...`)}
-                    </p>
+                    <h3 className="font-black text-slate-800 uppercase text-sm truncate">{role === 'exhibitor' ? (item.visitors?.full_name || "Visitor") : (item.exhibitors?.company_name || "Exhibitor")}</h3>
+                    <p className="text-[10px] text-blue-600 font-black uppercase">{role === 'exhibitor' ? item.visitors?.company_name : `Stall: ${item.exhibitors?.stall_number || 'N/A'}`}</p>
                   </div>
                 </div>
-
-                {/* NOTES DISPLAY */}
-                {item.notes && !editingId && (
-                  <div className="bg-slate-50 p-3 rounded-xl text-[11px] font-medium text-slate-600 italic mb-3 border-l-4 border-blue-200">
-                    "{item.notes}"
-                  </div>
-                )}
-
-                {/* NOTES EDITOR */}
+                {item.notes && !editingId && <div className="bg-slate-50 p-3 rounded-xl text-[11px] font-medium text-slate-600 italic mb-3 border-l-4 border-blue-200">"{item.notes}"</div>}
                 {editingId === item.id ? (
                   <div className="space-y-3">
-                    <textarea 
-                      className="w-full p-3 text-xs border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-400 min-h-[80px]" 
-                      placeholder="Add details..."
-                      value={noteText} 
-                      onChange={(e) => setNoteText(e.target.value)} 
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => saveNote(item.id)} className="font-bold px-6 bg-blue-600">SAVE</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="font-bold">CANCEL</Button>
-                    </div>
+                    <textarea className="w-full p-3 text-xs border-2 rounded-2xl outline-none" placeholder="Add details..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
+                    <div className="flex gap-2"><Button size="sm" onClick={() => saveNote(item.id)} className="font-bold bg-blue-600">SAVE</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>CANCEL</Button></div>
                   </div>
                 ) : (
                   <div className="flex justify-between items-center pt-2 border-t border-slate-50">
-                    <span className="text-[10px] font-black text-green-600 uppercase">
-                      {role === 'exhibitor' ? `📞 ${item.visitors?.phone || 'No Phone'}` : '⭐ SAVED'}
-                    </span>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>
-                      {item.notes ? 'Edit Note' : '+ Add Note'}
-                    </Button>
+                    <span className="text-[10px] font-black text-green-600 uppercase">{role === 'exhibitor' ? `📞 ${item.visitors?.phone || 'No Phone'}` : '⭐ SAVED'}</span>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>{item.notes ? 'Edit Note' : '+ Add Note'}</Button>
                   </div>
                 )}
               </div>
