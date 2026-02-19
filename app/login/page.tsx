@@ -1,87 +1,117 @@
 'use client'
+
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [error, setError] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    
-    // Attempt to sign in
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    setError('')
 
-    if (error) {
-      alert(error.message)
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (authError) throw authError
+
+      if (data.user) {
+        // --- ROLE-BASED REDIRECT LOGIC ---
+        // Check if the user is staff or admin
+        const { data: profile } = await supabase
+          .from('exhibitors')
+          .select('is_staff')
+          .eq('id', data.user.id)
+          .single()
+
+        // Admin override: Replace with your actual admin email
+        const isAdmin = data.user.email === 'connect@gujtravelexpo.com'
+
+        if (isAdmin) {
+          router.push('/admin')
+        } else if (profile?.is_staff) {
+          router.push('/staff')
+        } else {
+          router.push('/dashboard')
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid login credentials')
+    } finally {
       setLoading(false)
-    } else {
-      // SUCCESS! Redirect to the Dashboard
-      router.push('/dashboard')
-      router.refresh()
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-[350px] shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">GUJ GIFT EXPO 2026</CardTitle>
-          <CardDescription className="text-center">Official Visitor Login</CardDescription>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+      <Card className="w-full max-w-md border-0 shadow-2xl overflow-hidden rounded-3xl">
+        <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
+          <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
+          <CardTitle className="text-xl font-black uppercase tracking-tighter italic">Secure Access</CardTitle>
+          <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mt-1 opacity-70">Official Portal Login</p>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin}>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="name@company.com" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+        
+        <CardContent className="p-8 bg-white">
+          <form onSubmit={handleLogin} className="space-y-5">
+            {error && (
+              <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-600 text-xs font-bold uppercase">
+                {error}
               </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  placeholder="******" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Official Email</Label>
+              <Input 
+                type="email" 
+                placeholder="email@company.com" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-slate-50 border-0 h-12 font-medium"
+              />
             </div>
-            <Button className="w-full mt-6" type="submit" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Password</Label>
+              <Input 
+                type="password" 
+                placeholder="••••••••" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-slate-50 border-0 h-12 font-medium"
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-100 transition-all text-white"
+            >
+              {loading ? 'Authenticating...' : 'Enter Dashboard'}
             </Button>
           </form>
+
+          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+             <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">
+               For technical support or lost credentials, contact <br/>
+               <span className="text-[#0b3d41]">Shree Balaji Event LLP Support</span>
+             </p>
+          </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-           <div className="text-sm text-gray-500 text-center">
-             New Visitor?
-           </div>
-           <Link href="/register" className="w-full">
-             <Button variant="outline" className="w-full">
-               Register for Expo Badge
-             </Button>
-           </Link>
-        </CardFooter>
       </Card>
     </div>
   )
