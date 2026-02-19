@@ -18,12 +18,14 @@ export default function VisitorBadge() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/login')
 
+      // 1. Check if user is an Exhibitor
       const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
 
       if (exhibitor) {
         setProfile(exhibitor)
         setRole('exhibitor')
       } else {
+        // 2. Check if user is a Visitor
         const { data: visitor } = await supabase.from('visitors').select('*').eq('id', user.id).single()
         setProfile(visitor)
         setRole('visitor')
@@ -42,7 +44,7 @@ export default function VisitorBadge() {
         pixelRatio: 3 
       })
       const link = document.createElement('a')
-      link.download = `GGE-Badge-${profile?.full_name || 'Pass'}.png`
+      link.download = `GGE-Badge-${profile?.full_name || profile?.company_name || 'Pass'}.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
@@ -50,7 +52,7 @@ export default function VisitorBadge() {
     }
   }
 
-  if (loading) return <div className="p-20 text-center font-black uppercase text-[#ef6c33]">Loading Expo Pass...</div>
+  if (loading) return <div className="p-20 text-center font-black uppercase text-[#ef6c33]">Generating Pass...</div>
 
   return (
     <div className="min-h-screen bg-slate-200 flex flex-col items-center justify-center p-4">
@@ -66,9 +68,9 @@ export default function VisitorBadge() {
           <img src="/event-logo.png" alt="GGE 2026" className="h-28 w-auto object-contain scale-125" />
         </div>
 
-        {/* ROLE PILL: Status */}
+        {/* ROLE PILL: Color change to distinguish Exhibitor vs Visitor */}
         <div className="flex justify-center -mt-5">
-          <div className="bg-[#ef6c33] text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
+          <div className={`${role === 'exhibitor' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg`}>
             {role === 'exhibitor' ? 'OFFICIAL EXHIBITOR' : 'VALUED VISITOR'}
           </div>
         </div>
@@ -81,9 +83,9 @@ export default function VisitorBadge() {
             </div>
             
             <div className="flex-1 text-left">
-              {/* PRIMARY: Name */}
+              {/* PRIMARY DISPLAY: Exhibitor Name (Person) or Visitor Name */}
               <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words mb-1">
-                {role === 'exhibitor' ? profile?.company_name : profile?.full_name}
+                {role === 'exhibitor' ? (profile?.full_name || 'Exhibitor Name') : profile?.full_name}
               </h2>
               {/* SECONDARY: Role */}
               <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight">
@@ -92,14 +94,18 @@ export default function VisitorBadge() {
             </div>
           </div>
 
-          <div className="w-full flex justify-between items-end border-t border-slate-100 pt-4">
+          <div className="w-full flex justify-between items-center border-t border-slate-100 pt-4">
             <div className="text-left">
                <p className="text-[10px] font-bold text-slate-400 uppercase">Company / Firm</p>
-               <p className="text-sm font-bold text-[#0b3d41] uppercase">{role === 'exhibitor' ? profile?.category : (profile?.company_name || 'Individual Visitor')}</p>
+               {/* Fixed: Displays Company Name here now */}
+               <p className="text-sm font-bold text-[#0b3d41] uppercase max-w-[180px]">
+                 {profile?.company_name || 'Individual Visitor'}
+               </p>
             </div>
+            {/* Improved Stall Section */}
             {role === 'exhibitor' && profile?.stall_number && (
-              <div className="bg-[#0b3d41] text-white px-4 py-2 rounded-xl text-right">
-                <p className="text-[9px] opacity-70 uppercase font-bold">Stall</p>
+              <div className="bg-[#0b3d41] text-white p-3 rounded-2xl text-center min-w-[70px]">
+                <p className="text-[8px] opacity-70 uppercase font-black">Stall</p>
                 <p className="text-xl font-black leading-none">{profile.stall_number}</p>
               </div>
             )}
