@@ -9,24 +9,38 @@ import { toPng } from 'html-to-image'
 export default function VisitorBadge() {
   const router = useRouter()
   const badgeRef = useRef<HTMLDivElement>(null)
-  const [visitor, setVisitor] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const [role, setRole] = useState<'visitor' | 'exhibitor' | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const getProfile = async () => {
+    const getProfileData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/login')
 
-      const { data } = await supabase
-        .from('visitors')
+      // Check Exhibitor Table first
+      const { data: exhibitor } = await supabase
+        .from('exhibitors')
         .select('*')
         .eq('id', user.id)
         .single()
 
-      if (data) setVisitor(data)
+      if (exhibitor) {
+        setProfile(exhibitor)
+        setRole('exhibitor')
+      } else {
+        // Fallback to Visitor Table
+        const { data: visitor } = await supabase
+          .from('visitors')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        setProfile(visitor)
+        setRole('visitor')
+      }
       setLoading(false)
     }
-    getProfile()
+    getProfileData()
   }, [router])
 
   const downloadBadge = async () => {
@@ -37,7 +51,7 @@ export default function VisitorBadge() {
         backgroundColor: '#ffffff',
       })
       const link = document.createElement('a')
-      link.download = `GGE2026-Pass-${visitor?.full_name || 'Visitor'}.png`
+      link.download = `GGE2026-Pass-${profile?.full_name || profile?.company_name}.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
@@ -53,31 +67,40 @@ export default function VisitorBadge() {
       {/* COMPACT WHITE THEME BADGE */}
       <div ref={badgeRef} className="w-full max-w-[340px] bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
         
-        {/* HEADER: Event Logo & Title */}
-        <div className="pt-6 pb-4 flex flex-col items-center border-b border-slate-100">
+        {/* HEADER: Maximized Event Logo */}
+        <div className="pt-8 pb-4 flex flex-col items-center border-b border-slate-100 px-4">
           <img 
             src="/event-logo.png" 
             alt="Guj Gift Expo 2026" 
-            className="h-16 w-auto object-contain mb-2" 
+            className="h-24 w-auto object-contain mb-1 scale-110" // Increased size and scale
           />
-          <h1 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 leading-none">Entry Pass</h1>
+          <h1 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mt-2">
+            {role === 'exhibitor' ? 'Exhibitor Pass' : 'Entry Pass'}
+          </h1>
           <p className="text-[9px] font-bold text-blue-600 tracking-[0.2em] uppercase mt-1">Guj Gift Expo 2026</p>
         </div>
 
-        {/* QR & User Details (Tightened Spacing) */}
-        <div className="px-6 py-6 flex flex-col items-center text-center">
+        {/* QR & User Details */}
+        <div className="px-6 py-5 flex flex-col items-center text-center">
           <div className="p-3 border-2 border-slate-50 rounded-2xl bg-white mb-4 shadow-sm">
-            {visitor && <QRCode value={visitor.id} size={150} level="H" />}
+            {profile && <QRCode value={profile.id} size={140} level="H" />}
           </div>
 
           <h2 className="text-2xl font-black uppercase text-slate-900 leading-tight">
-            {visitor?.full_name || "Visitor"}
+            {role === 'exhibitor' ? profile?.company_name : profile?.full_name}
           </h2>
           <p className="text-blue-600 font-bold uppercase text-xs mt-1">
-            {visitor?.company_name || "Delegate"}
+            {role === 'exhibitor' ? profile?.category : profile?.company_name}
           </p>
 
-          {/* Venue & Date: August Schedule */}
+          {/* CONDITIONAL STALL NUMBER: Exhibitors Only */}
+          {role === 'exhibitor' && profile?.stall_number && (
+            <div className="mt-2 bg-blue-50 px-4 py-1 rounded-full border border-blue-100">
+              <p className="text-[11px] font-black text-blue-700 uppercase">Stall: {profile.stall_number}</p>
+            </div>
+          )}
+
+          {/* Venue & Date */}
           <div className="mt-4 pt-4 border-t border-slate-100 w-full">
             <p className="text-[10px] font-black text-slate-800 uppercase">📅 12th Aug - 14th Aug, 2026</p>
             <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">📍 GMDC University Ground, Ahmedabad</p>
