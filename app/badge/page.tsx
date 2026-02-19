@@ -57,85 +57,85 @@ export default function VisitorBadge() {
   return (
     <div className="min-h-screen bg-slate-200 flex flex-col items-center justify-center p-4">
       
-      {/* THE COMPACT BADGE */}
+      {/* STANDARD COMPACT BADGE SIZING (max-w-[320px] and tighter rounding) */}
       <div 
         ref={badgeRef} 
-        className="w-full max-w-[340px] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200"
+        className="w-full max-w-[320px] bg-white rounded-[1.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200"
       >
         
-        {/* LIGHT TEAL HEADER: Maximized Logo */}
-        <div className="bg-[#f0f7f7] pt-10 pb-12 flex flex-col items-center px-6">
-          <img src="/event-logo.png" alt="GGE 2026" className="h-28 w-auto object-contain scale-125" />
+        {/* LIGHT TEAL HEADER: Reduced vertical padding */}
+        <div className="bg-[#f0f7f7] pt-6 pb-8 flex flex-col items-center px-4">
+          <img src="/event-logo.png" alt="GGE 2026" className="h-20 w-auto object-contain scale-110" />
         </div>
 
-        {/* ROLE PILL */}
-        <div className="flex justify-center -mt-5">
-          <div className={`${role === 'exhibitor' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg`}>
+        {/* ROLE PILL: Tighter margins */}
+        <div className="flex justify-center -mt-4">
+          <div className={`${role === 'exhibitor' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md`}>
             {role === 'exhibitor' ? 'OFFICIAL EXHIBITOR' : 'VALUED VISITOR'}
           </div>
         </div>
 
-        {/* MIDDLE SECTION: Stacked Layout (Name Above QR) */}
-        <div className="px-8 pt-8 pb-6 flex flex-col items-center text-center">
+        {/* MIDDLE SECTION: Tighter spacing */}
+        <div className="px-6 pt-5 pb-4 flex flex-col items-center text-center">
           
-          {/* 1. NAME & ROLE (Moved to Top) */}
-          <div className="mb-5">
-            <h2 className="text-3xl font-black text-[#0b3d41] uppercase tracking-tighter leading-none break-words mb-2">
+          {/* 1. NAME & ROLE */}
+          <div className="mb-3 w-full">
+            <h2 className="text-2xl font-black text-[#0b3d41] uppercase tracking-tighter leading-tight break-words mb-1">
               {role === 'exhibitor' ? (profile?.full_name || 'Exhibitor Name') : profile?.full_name}
             </h2>
-            <p className="text-sm font-black text-[#ef6c33] uppercase leading-tight tracking-widest">
+            <p className="text-[11px] font-black text-[#ef6c33] uppercase leading-none tracking-widest">
               {role === 'exhibitor' ? 'Exhibitor' : 'Visitor'}
             </p>
           </div>
 
-          {/* 2. QR CODE (Centered Below Name) */}
-          <div className="p-3 border-2 border-[#ef6c33] rounded-[2rem] bg-white shadow-sm mb-6 inline-block">
-            {profile && <QRCode value={profile.id} size={140} level="H" fgColor="#0b3d41" />}
+          {/* 2. QR CODE */}
+          <div className="p-2.5 border-2 border-[#ef6c33] rounded-[1.5rem] bg-white shadow-sm mb-4 inline-block">
+            {profile && <QRCode value={profile.id} size={120} level="H" fgColor="#0b3d41" />}
           </div>
 
           {/* 3. COMPANY & STALL INFO */}
-          <div className="w-full flex justify-between items-center border-t border-slate-100 pt-4 text-left">
-            <div>
-               <p className="text-[10px] font-bold text-slate-400 uppercase">Company / Firm</p>
-               <p className="text-sm font-bold text-[#0b3d41] uppercase max-w-[180px] leading-tight mt-0.5">
+          <div className="w-full flex justify-between items-end border-t border-slate-100 pt-3 text-left">
+            <div className="flex-1 pr-2">
+               <p className="text-[9px] font-bold text-slate-400 uppercase">Company / Firm</p>
+               <p className="text-xs font-bold text-[#0b3d41] uppercase leading-tight mt-0.5 line-clamp-2">
                  {profile?.company_name || 'Individual Visitor'}
                </p>
             </div>
             {role === 'exhibitor' && profile?.stall_number && (
-              <div className="bg-[#0b3d41] text-white p-3 rounded-2xl text-center min-w-[70px] ml-2">
-                <p className="text-[8px] opacity-70 uppercase font-black">Stall</p>
-                <p className="text-xl font-black leading-none">{profile.stall_number}</p>
+              <div className="bg-[#0b3d41] text-white p-2 rounded-xl text-center min-w-[60px]">
+                <p className="text-[7px] opacity-70 uppercase font-black">Stall</p>
+                <p className="text-lg font-black leading-none">{profile.stall_number}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* INFO STRIP */}
-        <div className="bg-[#0b3d41] text-white px-8 py-5 flex justify-between items-center">
+        {/* INFO STRIP: Reduced padding */}
+        <div className="bg-[#0b3d41] text-white px-6 py-3 flex justify-between items-center">
           <div>
-            <p className="text-[9px] opacity-60 uppercase font-bold tracking-widest">Date</p>
-            <p className="text-xs font-black uppercase tracking-tighter">12-14 Aug 2026</p>
+            <p className="text-[8px] opacity-60 uppercase font-bold tracking-widest">Date</p>
+            <p className="text-[10px] font-black uppercase tracking-tighter">12-14 Aug 2026</p>
           </div>
-          <div className="h-8 w-[1px] bg-white/20"></div>
+          <div className="h-6 w-[1px] bg-white/20"></div>
           <div className="text-right">
-            <p className="text-[9px] opacity-60 uppercase font-bold tracking-widest">Location</p>
-            <p className="text-xs font-black uppercase tracking-tighter text-right">GMDC Ground, Ahmedabad</p>
+            <p className="text-[8px] opacity-60 uppercase font-bold tracking-widest">Location</p>
+            <p className="text-[10px] font-black uppercase tracking-tighter text-right">GMDC Ground</p>
           </div>
         </div>
 
-        {/* ORGANIZER FOOTER */}
-        <div className="p-6 flex items-center justify-center gap-4 bg-white">
-           <img src="/organizer-logo.png" alt="Organizer" className="h-10 w-auto object-contain opacity-100" />
-           <div className="h-8 w-[1px] bg-slate-200"></div>
-           <p className="text-[9px] font-bold text-slate-500 uppercase leading-tight tracking-tighter">
+        {/* ORGANIZER FOOTER: Compacted */}
+        <div className="p-4 flex items-center justify-center gap-3 bg-white">
+           <img src="/organizer-logo.png" alt="Organizer" className="h-8 w-auto object-contain opacity-100" />
+           <div className="h-6 w-[1px] bg-slate-200"></div>
+           <p className="text-[8px] font-bold text-slate-500 uppercase leading-tight tracking-tighter">
               Organized by <br/> <span className="text-[#0b3d41]">Shree Balaji Event LLP</span>
            </p>
         </div>
       </div>
 
       {/* DOWNLOAD ACTIONS */}
-      <div className="mt-8 w-full max-w-[340px] space-y-3">
-        <Button onClick={downloadBadge} className="w-full h-16 rounded-2xl bg-[#ef6c33] text-white font-black uppercase tracking-widest shadow-xl hover:bg-[#d45a27] transition-all">
+      <div className="mt-6 w-full max-w-[320px] space-y-3">
+        <Button onClick={downloadBadge} className="w-full h-14 rounded-2xl bg-[#ef6c33] text-white font-black uppercase tracking-widest shadow-xl hover:bg-[#d45a27] transition-all">
           Download Digital Pass
         </Button>
         <Button variant="ghost" onClick={() => router.push('/dashboard')} className="w-full text-slate-400 font-bold uppercase text-[10px]">
