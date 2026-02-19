@@ -34,7 +34,7 @@ export default function Dashboard() {
     if (!user) return router.push('/login')
     setUser(user)
 
-    // Identify Role
+    // Check for Exhibitor Role first
     const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
     
     if (exhibitor) {
@@ -102,11 +102,10 @@ export default function Dashboard() {
   // --- 5. NOTE SAVING ---
   const saveNote = async (id: string) => {
     const table = role === 'exhibitor' ? 'leads' : 'exhibitor_connections'
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from(table)
       .update({ notes: noteText })
       .eq('id', id)
-      .select()
 
     if (error) alert("Error: " + error.message)
     else {
@@ -128,7 +127,7 @@ export default function Dashboard() {
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Connections")
-    XLSX.writeFile(workbook, `GGE_Data_${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.writeFile(workbook, `GGE_Leads_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400">Loading Dashboard...</div>
@@ -136,11 +135,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
       
-      {/* HEADER WITH ADMIN TOGGLE */}
+      {/* HEADER WITH LOGOUT */}
       <div className="flex justify-between items-center mb-6 mt-2">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter italic">
-            {role === 'exhibitor' ? 'Lead Manager' : 'Visitor Hub'}
+            {role === 'exhibitor' ? 'Exhibitor Hub' : 'Visitor Hub'}
           </h1>
           <div className="flex items-center gap-2 mt-1">
              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -149,54 +148,35 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-2">
-            {/* REPLACE WITH YOUR EMAIL */}
-            {user?.email === 'admin@test.com' && (
-                <Button variant="destructive" size="sm" onClick={() => router.push('/admin')} className="font-bold text-[10px] shadow-md animate-pulse">ADMIN</Button>
-            )}
             <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold border-2 text-xs bg-white">LOGOUT</Button>
         </div>
       </div>
 
-      {/* --- VISITOR ENTRY PASS CARD (Added as requested) --- */}
-      {role === 'visitor' && !scanning && (
+      {/* --- UNIVERSAL BADGE CARD: Visible to both Visitors & Exhibitors --- */}
+      {!scanning && (
         <Card 
-          className="border-0 shadow-xl bg-slate-900 text-white mb-4 active:scale-95 transition-all cursor-pointer overflow-hidden relative" 
+          className="border-0 shadow-xl bg-[#0b3d41] text-white mb-4 active:scale-95 transition-all cursor-pointer overflow-hidden relative" 
           onClick={() => router.push('/badge')}
         >
           <CardContent className="p-6 flex items-center justify-between">
             <div className="z-10">
-              <h2 className="text-xl font-black uppercase italic leading-none">My Entry Pass</h2>
-              <p className="text-[10px] font-bold uppercase text-blue-400 mt-2 tracking-widest">View & Download QR Badge</p>
+              <h2 className="text-xl font-black uppercase italic leading-none">
+                {role === 'exhibitor' ? 'Exhibitor Pass' : 'My Entry Pass'}
+              </h2>
+              <p className="text-[10px] font-bold uppercase text-orange-400 mt-2 tracking-widest">View & Download QR Badge</p>
             </div>
             <div className="text-4xl opacity-40">🎫</div>
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-blue-600 rounded-full blur-3xl opacity-30"></div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-orange-600 rounded-full blur-3xl opacity-30"></div>
           </CardContent>
         </Card>
       )}
 
-      {/* EXHIBITOR QR TOGGLE */}
-      {role === 'exhibitor' && (
-        <div className="mb-4">
-          {!showMyQR ? (
-            <Button onClick={() => setShowMyQR(true)} className="w-full bg-slate-900 text-white font-black py-6 rounded-2xl shadow-lg uppercase italic text-sm">Show My QR Code 📱</Button>
-          ) : (
-            <Card className="border-4 border-slate-900 bg-white p-6 flex flex-col items-center animate-in zoom-in">
-              <div className="flex justify-between w-full mb-4">
-                <span className="text-[10px] font-black uppercase text-slate-400">Let Visitor Scan This</span>
-                <Button variant="ghost" size="sm" onClick={() => setShowMyQR(false)} className="h-6 text-[10px] font-black text-red-500">Close</Button>
-              </div>
-              <QRCode value={user.id} size={200} level="H" />
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* MAIN SCAN BUTTON */}
+      {/* SCAN ACTION CARD */}
       {!scanning && (
-        <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all cursor-pointer ${role === 'exhibitor' ? 'bg-blue-600' : 'bg-orange-600'}`} onClick={() => setScanning(true)}>
+        <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all cursor-pointer ${role === 'exhibitor' ? 'bg-[#ef6c33]' : 'bg-blue-600'}`} onClick={() => setScanning(true)}>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black uppercase italic leading-none">Scan {role === 'exhibitor' ? 'Visitor' : 'Exhibitor'}</h2>
+              <h2 className="text-lg font-black uppercase italic leading-none text-white">Scan {role === 'exhibitor' ? 'Visitor' : 'Exhibitor'}</h2>
               <p className="text-[9px] font-bold uppercase opacity-80 mt-1">Tap to open camera</p>
             </div>
             <span className="text-3xl">📷</span>
@@ -240,7 +220,7 @@ export default function Dashboard() {
             <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden mb-3">
               <div className="p-5">
                 <div className="flex items-center gap-4 mb-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white ${role === 'exhibitor' ? 'bg-blue-600' : 'bg-orange-600'}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white ${role === 'exhibitor' ? 'bg-[#ef6c33]' : 'bg-blue-600'}`}>
                     {(role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name)?.charAt(0) || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
