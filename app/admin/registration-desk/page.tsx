@@ -45,7 +45,7 @@ export default function RegistrationDesk() {
       .single()
 
     // Replace with your actual admin email
-    const isAdmin = user.email === 'connect@gujtravelexpo.com' 
+    const isAdmin = user.email === 'super@gmail.com' 
     
     if (!profile?.is_staff && !isAdmin) {
       router.push('/dashboard')
