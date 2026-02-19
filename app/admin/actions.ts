@@ -2,7 +2,6 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize the Admin Client using the Secret Key
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -21,11 +20,17 @@ export async function createExhibitorAction(prevState: any, formData: FormData) 
   const stallNumber = formData.get('stall_number') as string
   const category = formData.get('category') as string
 
-  // 1. Create the Auth User (Login)
+  // 1. Validation: Check if the email is already in use before trying to create
+  const { data: existingUser } = await supabaseAdmin.from('exhibitors').select('id').eq('email', email).single()
+  if (existingUser) {
+    return { success: false, message: 'Error: An exhibitor with this email already exists.' }
+  }
+
+  // 2. Create the Auth User (Login)
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    email_confirm: true // Auto-confirm email so they can login immediately
+    email_confirm: true 
   })
 
   if (authError) {
@@ -36,18 +41,20 @@ export async function createExhibitorAction(prevState: any, formData: FormData) 
     return { success: false, message: 'User creation failed unknown error' }
   }
 
-  // 2. Create the Exhibitor Profile (Database)
+  // 3. Create the Exhibitor Profile (Database)
   const { error: dbError } = await supabaseAdmin
     .from('exhibitors')
     .insert({
-      id: authData.user.id, // Link to the Auth User
+      id: authData.user.id, 
       company_name: companyName,
       stall_number: stallNumber,
       category: category,
-      email: email // Optional: if you have an email column in public.exhibitors
+      email: email 
     })
 
   if (dbError) {
+    // Cleanup: If DB fails, delete the auth user so we can try again
+    await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
     return { success: false, message: 'Database Error: ' + dbError.message }
   }
 
