@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createExhibitorAction } from './actions'
-import * as XLSX from 'xlsx' // Needed for Master Export
+import * as XLSX from 'xlsx'
 
 const initialState = { success: false, message: '' }
 
@@ -41,11 +41,9 @@ export default function AdminPanel() {
   }
 
   const fetchDashboardData = async () => {
-    // Fetch Exhibitors
     const { data: exData } = await supabase.from('exhibitors').select('*').order('created_at', { ascending: false })
     setExhibitors(exData || [])
 
-    // Fetch Total Visitors (Count Only for speed)
     const { count: visCount } = await supabase.from('visitors').select('*', { count: 'exact', head: true })
     setVisitorCount(visCount || 0)
   }
@@ -56,11 +54,11 @@ export default function AdminPanel() {
     fetchDashboardData()
   }
 
-  // Master Export Function
   const exportMasterList = () => {
     if (exhibitors.length === 0) return alert("No exhibitors to export.")
     const dataToExport = exhibitors.map(ex => ({
       'Registration Date': new Date(ex.created_at).toLocaleDateString(),
+      'Exhibitor Name': ex.full_name || 'N/A', // Added to export
       'Company Name': ex.company_name,
       'Stall Number': ex.stall_number,
       'Category': ex.category,
@@ -72,7 +70,7 @@ export default function AdminPanel() {
     XLSX.writeFile(workbook, `GGE_Exhibitor_Master_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
-  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest">Verifying Admin Access...</div>
+  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm">Verifying Admin Access...</div>
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 pb-20 font-sans">
@@ -92,15 +90,15 @@ export default function AdminPanel() {
 
         {/* LIVE STATS ROW */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-blue-600 text-white border-0 shadow-md">
+            <Card className="bg-[#0b3d41] text-white border-0 shadow-md">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Exhibitors</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-blue-200">Total Exhibitors</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{exhibitors.length}</p>
                 </CardContent>
             </Card>
-            <Card className="bg-orange-500 text-white border-0 shadow-md">
+            <Card className="bg-[#ef6c33] text-white border-0 shadow-md">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Registered Visitors</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-orange-100">Registered Visitors</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{visitorCount}</p>
                 </CardContent>
             </Card>
@@ -108,54 +106,61 @@ export default function AdminPanel() {
 
         <div className="grid md:grid-cols-12 gap-6">
           
-          {/* CREATE FORM (Takes up 5 columns on desktop) */}
+          {/* CREATE FORM */}
           <Card className="md:col-span-5 border-0 shadow-md h-fit">
             <CardHeader className="bg-slate-900 text-white rounded-t-xl">
-              <CardTitle className="uppercase italic tracking-tight">Onboard Exhibitor</CardTitle>
+              <CardTitle className="uppercase italic tracking-tight text-lg">Onboard Exhibitor</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <form action={formAction} className="space-y-4">
+                
+                {/* NEW FIELD: Exhibitor Name (Person) */}
+                <div className="space-y-2">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Exhibitor Name (Person)</Label>
+                  <Input name="full_name" placeholder="Full name of the person" className="font-medium bg-slate-50 border-0" required />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Company Name</Label>
-                    <Input name="company_name" placeholder="e.g. Shourya Stitch" className="font-medium" required />
+                    <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Company Name</Label>
+                    <Input name="company_name" placeholder="e.g. Shourya Stitch" className="font-medium bg-slate-50 border-0" required />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold text-xs uppercase text-slate-500">Stall Number</Label>
-                    <Input name="stall_number" placeholder="e.g. A-101" className="font-medium" required />
+                    <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Stall Number</Label>
+                    <Input name="stall_number" placeholder="e.g. A-101" className="font-medium bg-slate-50 border-0" required />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Category</Label>
-                  <Input name="category" placeholder="e.g. Luggage, Bags..." className="font-medium" required />
+                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Category</Label>
+                  <Input name="category" placeholder="e.g. Luggage, Bags..." className="font-medium bg-slate-50 border-0" required />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Login Email</Label>
-                  <Input name="email" type="email" placeholder="official@company.com" className="font-medium" required />
+                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Login Email</Label>
+                  <Input name="email" type="email" placeholder="official@company.com" className="font-medium bg-slate-50 border-0" required />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase text-slate-500">Password</Label>
-                  <Input name="password" type="text" defaultValue="Expo@2026" className="font-medium" required />
+                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Password</Label>
+                  <Input name="password" type="text" defaultValue="Expo@2026" className="font-medium bg-slate-50 border-0" required />
                 </div>
 
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest mt-4 py-6">
+                <Button type="submit" className="w-full bg-[#ef6c33] hover:bg-[#d45a27] font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg shadow-orange-100">
                   + Create Account
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* LIST & EXPORT (Takes up 7 columns on desktop) */}
-          <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[600px]">
-            <CardHeader className="bg-white border-b py-4">
+          {/* LIST & EXPORT */}
+          <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[650px]">
+            <CardHeader className="bg-white border-b py-4 px-6">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-800">Master List</CardTitle>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={fetchDashboardData}>Refresh</Button>
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 font-bold text-xs" onClick={exportMasterList}>
+                  <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase" onClick={fetchDashboardData}>Refresh</Button>
+                  <Button size="sm" className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4" onClick={exportMasterList}>
                     Download Excel
                   </Button>
                 </div>
@@ -163,25 +168,25 @@ export default function AdminPanel() {
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[10px] sticky top-0 z-10 shadow-sm">
+                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="p-4">Company Details</th>
-                    <th className="p-4 hidden sm:table-cell">Category</th>
-                    <th className="p-4 text-right">Actions</th>
+                    <th className="p-4 px-6">Name & Company</th>
+                    <th className="p-4 hidden sm:table-cell">Stall</th>
+                    <th className="p-4 text-right px-6">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {exhibitors.map((ex) => (
                     <tr key={ex.id} className="hover:bg-white transition-colors">
-                      <td className="p-4">
-                        <p className="font-black text-slate-900 uppercase">{ex.company_name}</p>
-                        <p className="text-xs font-bold text-blue-600 uppercase mt-1">Stall: {ex.stall_number}</p>
+                      <td className="p-4 px-6">
+                        <p className="font-black text-slate-900 uppercase text-xs">{ex.full_name || 'No Name Set'}</p>
+                        <p className="text-[10px] font-bold text-blue-600 uppercase mt-0.5">{ex.company_name}</p>
                       </td>
-                      <td className="p-4 hidden sm:table-cell text-slate-600 font-medium text-xs">
-                        {ex.category}
+                      <td className="p-4 hidden sm:table-cell">
+                        <span className="bg-[#0b3d41] text-white px-2 py-1 rounded text-[10px] font-black uppercase">{ex.stall_number}</span>
                       </td>
-                      <td className="p-4 text-right">
-                        <Button variant="destructive" size="sm" onClick={() => deleteExhibitor(ex.id)} className="h-7 text-[10px] font-bold px-3">
+                      <td className="p-4 text-right px-6">
+                        <Button variant="destructive" size="sm" onClick={() => deleteExhibitor(ex.id)} className="h-7 text-[9px] font-black px-3 rounded-lg">
                           REMOVE
                         </Button>
                       </td>
@@ -189,7 +194,7 @@ export default function AdminPanel() {
                   ))}
                   {exhibitors.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="p-10 text-center text-slate-400 font-bold uppercase text-xs">No Exhibitors Found</td>
+                      <td colSpan={3} className="p-20 text-center text-slate-300 font-bold uppercase text-xs tracking-widest">No Exhibitors Onboarded</td>
                     </tr>
                   )}
                 </tbody>
