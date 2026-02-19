@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { createExhibitorAction } from './actions'
 import * as XLSX from 'xlsx'
 
-// --- FIX: Prevents "supabaseKey is required" error during Vercel builds ---
 export const dynamic = 'force-dynamic'
 
 const initialState = { success: false, message: '' }
@@ -19,8 +18,9 @@ const initialState = { success: false, message: '' }
 export default function AdminPanel() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [exhibitors, setExhibitors] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [visitorCount, setVisitorCount] = useState(0)
+  const [activeTab, setActiveTab] = useState<'exhibitors' | 'staff'>('exhibitors')
 
   const [state, formAction] = useFormState(createExhibitorAction, initialState)
 
@@ -44,79 +44,76 @@ export default function AdminPanel() {
   }
 
   const fetchDashboardData = async () => {
-    // Fetch Exhibitors & Staff
-    const { data: exData } = await supabase
+    const { data: userData } = await supabase
         .from('exhibitors')
         .select('*')
         .order('created_at', { ascending: false })
-    setExhibitors(exData || [])
+    setUsers(userData || [])
 
-    // Fetch Total Visitors
     const { count: visCount } = await supabase
         .from('visitors')
         .select('*', { count: 'exact', head: true })
     setVisitorCount(visCount || 0)
   }
 
-  const deleteExhibitor = async (id: string) => {
-    if(!confirm("Delete this profile? (Warning: This action is permanent)")) return;
+  const deleteUser = async (id: string) => {
+    if(!confirm("Delete this profile permanently?")) return;
     await supabase.from('exhibitors').delete().eq('id', id)
     fetchDashboardData()
   }
 
-  const exportMasterList = () => {
-    if (exhibitors.length === 0) return alert("No data to export.")
-    const dataToExport = exhibitors.map(ex => ({
-      'Type': ex.is_staff ? 'STAFF' : 'EXHIBITOR',
-      'Name': ex.full_name || 'N/A',
-      'Company/Role': ex.company_name,
-      'Stall': ex.stall_number || 'N/A',
-      'Email': ex.email || 'N/A'
+  const exportList = () => {
+    const filtered = users.filter(u => activeTab === 'staff' ? u.is_staff : !u.is_staff)
+    if (filtered.length === 0) return alert("No data to export.")
+    
+    const dataToExport = filtered.map(u => ({
+      'Name': u.full_name || 'N/A',
+      'Email': u.email || 'N/A',
+      'Company/Role': u.company_name || (u.is_staff ? 'Registration Staff' : 'N/A'),
+      'Stall': u.stall_number || 'N/A'
     }))
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "GGE 2026 Master List")
-    XLSX.writeFile(workbook, `GGE_Master_List_${new Date().toISOString().split('T')[0]}.xlsx`)
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.toUpperCase())
+    XLSX.writeFile(workbook, `GGE_2026_${activeTab}_List.xlsx`)
   }
 
-  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm">Verifying Admin Access...</div>
+  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm">Verifying Admin...</div>
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 pb-20 font-sans text-slate-900">
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* HEADER SECTION */}
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-[#0b3d41]">
           <div>
-            <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic">Command Center</h1>
-            <div className="flex items-center gap-2 mt-1">
-             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Super Admin Access</p>
-            </div>
+            <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none">Command Center</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Shree Balaji Event LLP | Super Admin</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => router.push('/admin/registration-desk')} className="bg-blue-600 hover:bg-blue-700 font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">
-                Registration Desk 🖨️
-            </Button>
-            <Button onClick={() => router.push('/admin/analytics')} className="bg-[#ef6c33] hover:bg-[#d45a27] font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">
-                Analytics 📈
-            </Button>
-            <Button onClick={() => router.push('/admin/visitor-log')} className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4 rounded-xl">
-                Scan Logs 📊
-            </Button>
+            <Button onClick={() => router.push('/admin/registration-desk')} className="bg-blue-600 hover:bg-blue-700 font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Desk 🖨️</Button>
+            <Button onClick={() => router.push('/admin/analytics')} className="bg-[#ef6c33] hover:bg-[#d45a27] font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Analytics 📈</Button>
+            <Button onClick={() => router.push('/admin/visitor-log')} className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4 rounded-xl">Logs 📊</Button>
             <Button variant="outline" className="font-bold border-2 text-[10px] uppercase rounded-xl" onClick={() => router.push('/dashboard')}>Exit</Button>
           </div>
         </div>
 
-        {/* STATS ROW */}
+        {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-[#0b3d41] text-white border-0 shadow-md">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-blue-200">Total Exhibitors</p>
-                    <p className="text-4xl font-black tracking-tighter mt-1">{exhibitors.filter(e => !e.is_staff).length}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-blue-200">Exhibitors</p>
+                    <p className="text-4xl font-black tracking-tighter mt-1">{users.filter(u => !u.is_staff).length}</p>
                 </CardContent>
             </Card>
-            <Card className="bg-[#ef6c33] text-white border-0 shadow-md">
+            <Card className="bg-blue-500 text-white border-0 shadow-md">
+                <CardContent className="p-6">
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Staff Members</p>
+                    <p className="text-4xl font-black tracking-tighter mt-1">{users.filter(u => u.is_staff).length}</p>
+                </CardContent>
+            </Card>
+            <Card className="bg-[#ef6c33] text-white border-0 shadow-md col-span-2">
                 <CardContent className="p-6">
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-orange-100">Total Visitors</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{visitorCount}</p>
@@ -126,95 +123,88 @@ export default function AdminPanel() {
 
         <div className="grid md:grid-cols-12 gap-6">
           
-          {/* ONBOARDING FORM */}
+          {/* FORM */}
           <Card className="md:col-span-5 border-0 shadow-md h-fit">
             <CardHeader className="bg-slate-900 text-white rounded-t-xl">
               <CardTitle className="uppercase italic tracking-tight text-lg">Onboard User</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <form action={formAction} className="space-y-4">
-                
-                {/* STAFF TOGGLE */}
                 <div className="flex items-center space-x-2 bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
                   <input type="checkbox" name="is_staff" value="true" id="staff-check" className="w-5 h-5 accent-[#0b3d41] cursor-pointer" />
-                  <Label htmlFor="staff-check" className="font-black text-[10px] uppercase text-[#0b3d41] cursor-pointer">
-                    Register as Registration Desk Staff
-                  </Label>
+                  <Label htmlFor="staff-check" className="font-black text-[10px] uppercase text-[#0b3d41] cursor-pointer">Register as Staff Member</Label>
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Full Name</Label>
-                  <Input name="full_name" placeholder="Person's Name" className="font-medium bg-slate-50 border-0" required />
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Full Name</Label>
+                  <Input name="full_name" placeholder="Full Name" className="font-medium bg-slate-50 border-0" required />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Company / Role</Label>
-                    <Input name="company_name" placeholder="Firm Name" className="font-medium bg-slate-50 border-0" />
+                  <div className="space-y-1">
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Company / Dept</Label>
+                    <Input name="company_name" placeholder="Firm/Role" className="font-medium bg-slate-50 border-0" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Stall (If Exhibitor)</Label>
-                    <Input name="stall_number" placeholder="e.g. A-101" className="font-medium bg-slate-50 border-0" />
+                  <div className="space-y-1">
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Stall (Exhibitor)</Label>
+                    <Input name="stall_number" placeholder="A-101" className="font-medium bg-slate-50 border-0" />
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Login Email</Label>
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Email Address</Label>
                   <Input name="email" type="email" placeholder="user@email.com" className="font-medium bg-slate-50 border-0" required />
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400 tracking-widest">Password</Label>
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Password</Label>
                   <Input name="password" type="text" defaultValue="Expo@2026" className="font-medium bg-slate-50 border-0" required />
                 </div>
-
-                <Button type="submit" className="w-full bg-[#ef6c33] hover:bg-[#d45a27] font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg">
-                  + Create Account
-                </Button>
+                <Button type="submit" className="w-full bg-[#ef6c33] hover:bg-[#d45a27] font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg shadow-orange-100">Create Account</Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* MASTER DIRECTORY */}
+          {/* TABS DIRECTORY */}
           <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[650px]">
-            <CardHeader className="bg-white border-b py-4 px-6">
+            <CardHeader className="bg-white border-b py-2 px-6">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-800">Directory</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="font-bold text-[10px] uppercase" onClick={fetchDashboardData}>Refresh</Button>
-                  <Button size="sm" className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4" onClick={exportMasterList}>
-                    Excel Export
-                  </Button>
+                <div className="flex border-b">
+                   <button 
+                     onClick={() => setActiveTab('exhibitors')}
+                     className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'exhibitors' ? 'border-[#ef6c33] text-[#ef6c33]' : 'border-transparent text-slate-400'}`}
+                   >
+                     Exhibitors ({users.filter(u => !u.is_staff).length})
+                   </button>
+                   <button 
+                     onClick={() => setActiveTab('staff')}
+                     className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'staff' ? 'border-blue-500 text-blue-500' : 'border-transparent text-slate-400'}`}
+                   >
+                     Staff ({users.filter(u => u.is_staff).length})
+                   </button>
                 </div>
+                <Button size="sm" variant="ghost" className="font-bold text-[10px] uppercase text-slate-400" onClick={exportList}>Export Excel</Button>
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="p-4 px-6">User Details</th>
-                    <th className="p-4 hidden sm:table-cell">Role / Stall</th>
+                    <th className="p-4 px-6">{activeTab === 'staff' ? 'Staff Name' : 'Exhibitor Name'}</th>
+                    <th className="p-4 hidden sm:table-cell">{activeTab === 'staff' ? 'Role' : 'Stall'}</th>
                     <th className="p-4 text-right px-6">Control</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {exhibitors.map((ex) => (
-                    <tr key={ex.id} className="hover:bg-white transition-colors">
+                  {users.filter(u => activeTab === 'staff' ? u.is_staff : !u.is_staff).map((u) => (
+                    <tr key={u.id} className="hover:bg-white transition-colors bg-white/50">
                       <td className="p-4 px-6">
-                        <p className="font-black text-slate-900 uppercase">{ex.full_name || 'Individual'}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{ex.email}</p>
+                        <p className="font-black text-slate-900 uppercase leading-none">{u.full_name || 'No Name'}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.email}</p>
                       </td>
                       <td className="p-4 hidden sm:table-cell">
-                        {ex.is_staff ? (
-                          <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">STAFF</span>
-                        ) : (
-                          <span className="bg-[#0b3d41] text-white px-3 py-1 rounded-full text-[9px] font-black uppercase">STALL: {ex.stall_number || 'TBD'}</span>
-                        )}
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${activeTab === 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-[#0b3d41] text-white'}`}>
+                          {activeTab === 'staff' ? (u.company_name || 'Registration Team') : (u.stall_number || 'TBD')}
+                        </span>
                       </td>
                       <td className="p-4 text-right px-6">
-                        <Button variant="destructive" size="sm" onClick={() => deleteExhibitor(ex.id)} className="h-7 text-[9px] font-black px-3 rounded-lg">
-                          REMOVE
-                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => deleteUser(u.id)} className="h-7 text-[9px] font-black px-3 rounded-lg">REMOVE</Button>
                       </td>
                     </tr>
                   ))}
