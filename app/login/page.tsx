@@ -43,7 +43,7 @@ export default function GlobalLoginHub() {
           .eq('id', data.user.id)
           .single()
 
-        // Set your exact Super Admin email here
+        // Your specific Super Admin email
         const isAdmin = data.user.email === 'maulikshah.13@gmail.com'
 
         // --- STRICT ROLE VALIDATION ---
@@ -58,9 +58,6 @@ export default function GlobalLoginHub() {
         else if (selectedRole === 'exhibitor') {
           if (profile?.is_staff || isAdmin) throw new Error("Please use your dedicated portal.")
           router.push('/dashboard')
-        }
-        else if (selectedRole === 'visitor') {
-          throw new Error("Visitor portal is currently under construction.")
         }
       }
     } catch (err: any) {
@@ -85,6 +82,7 @@ export default function GlobalLoginHub() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+            {/* Visitor Portal goes directly to the phone lookup page */}
             <Card className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer group" onClick={() => router.push('/visitor')}>
               <CardContent className="p-8 flex flex-col items-center justify-center bg-white group-hover:bg-slate-50 rounded-xl">
                 <span className="text-4xl mb-3">🎟️</span>
@@ -116,6 +114,17 @@ export default function GlobalLoginHub() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Command Center</p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* NEW PUBLIC PRE-REGISTRATION BUTTON */}
+          <div className="mt-8 pt-8 border-t border-slate-200">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Attending the expo?</p>
+            <Button 
+              onClick={() => router.push('/register')}
+              className="bg-[#ef6c33] hover:bg-[#d45a27] text-white h-14 px-10 font-black uppercase tracking-widest rounded-full shadow-lg shadow-orange-100 transition-all"
+            >
+              📝 Register as a New Visitor
+            </Button>
           </div>
         </div>
       </div>
