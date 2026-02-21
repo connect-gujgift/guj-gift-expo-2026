@@ -17,7 +17,7 @@ function BadgeContent() {
         const { data } = await supabase.from('visitors').select('*').eq('id', id).single()
         if (data) {
           setVisitor(data)
-          // Reduced delay to 100ms for near-instant pop-up once data loads
+          // 100ms delay for instant pop-up
           setTimeout(() => window.print(), 100)
         }
         setLoading(false)
@@ -34,39 +34,40 @@ function BadgeContent() {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page {
-            size: 384px 620px;
+            size: 384px 680px; /* Increased height so the bottom text is never cut off */
             margin: 0;
           }
           html, body {
             width: 384px !important;
-            height: 620px !important;
-            overflow: hidden !important; /* Forces the printer to stop after 1 page */
+            height: 680px !important;
             background: white !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             margin: 0 !important;
             padding: 0 !important;
           }
-          /* THE MAGIC TRICK: This physically covers up the footer instead of calculating hidden elements */
+          
+          /* THE MAGIC TRICK: This physically covers up the footer instantly */
+          /* Notice how the laggy 'body * { visibility: hidden; }' is completely gone! */
           .print-safe-area {
-            position: fixed !important;
+            position: absolute !important;
             top: 0 !important;
             left: 0 !important;
             width: 384px !important;
-            height: 620px !important;
+            height: 680px !important;
             background: white !important;
             z-index: 999999 !important;
             margin: 0 !important;
             padding: 0 !important;
+            overflow: hidden !important;
           }
+
           #printable-badge {
             border-radius: 0 !important;
             box-shadow: none !important;
             border: none !important;
             margin: 0 !important;
           }
-          /* Just as a fallback */
-          footer, header, nav { display: none !important; }
         }
       `}} />
 
@@ -95,7 +96,6 @@ function BadgeContent() {
                 
                 <div className="flex flex-col items-center gap-3">
                     <div className="p-2 border-[3px] border-[#ef6c33] rounded-2xl flex-shrink-0 bg-white">
-                        {/* Changed level="H" to "M" to drastically speed up SVG print rendering */}
                         <QRCode value={visitor.id} size={130} fgColor="#0b3d41" level="M" />
                     </div>
                     
@@ -130,7 +130,7 @@ function BadgeContent() {
             </div>
 
             {/* 5. BOTTOM ORGANIZER FOOTER */}
-            <div className="bg-slate-50 px-6 py-4 flex flex-col items-center justify-center gap-1.5">
+            <div className="bg-slate-50 px-6 py-6 flex flex-col items-center justify-center gap-2">
                 <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
                     <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
