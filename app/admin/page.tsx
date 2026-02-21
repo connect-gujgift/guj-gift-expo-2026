@@ -20,7 +20,10 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<any[]>([])
   const [visitorCount, setVisitorCount] = useState(0)
+  
+  // Tab states for both the Form and the Directory
   const [activeTab, setActiveTab] = useState<'exhibitors' | 'staff'>('exhibitors')
+  const [formType, setFormType] = useState<'exhibitor' | 'staff'>('exhibitor')
 
   const [state, formAction] = useFormState(createExhibitorAction, initialState)
 
@@ -89,7 +92,7 @@ export default function AdminPanel() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-[#0b3d41]">
           <div>
             <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none">Command Center</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Shree Balaji Event LLP | Super Admin</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Super Admin Access</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => router.push('/admin/registration-desk')} className="bg-blue-600 hover:bg-blue-700 font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Desk 🖨️</Button>
@@ -123,40 +126,69 @@ export default function AdminPanel() {
 
         <div className="grid md:grid-cols-12 gap-6">
           
-          {/* FORM */}
-          <Card className="md:col-span-5 border-0 shadow-md h-fit">
-            <CardHeader className="bg-slate-900 text-white rounded-t-xl">
-              <CardTitle className="uppercase italic tracking-tight text-lg">Onboard User</CardTitle>
-            </CardHeader>
+          {/* DYNAMIC ONBOARDING FORM */}
+          <Card className="md:col-span-5 border-0 shadow-md h-fit overflow-hidden">
+            <div className="flex bg-slate-900 text-white">
+              <button 
+                onClick={() => setFormType('exhibitor')}
+                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${formType === 'exhibitor' ? 'bg-[#ef6c33]' : 'hover:bg-slate-800'}`}
+              >
+                + Add Exhibitor
+              </button>
+              <button 
+                onClick={() => setFormType('staff')}
+                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${formType === 'staff' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}
+              >
+                + Add Staff
+              </button>
+            </div>
+            
             <CardContent className="p-6">
               <form action={formAction} className="space-y-4">
-                <div className="flex items-center space-x-2 bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
-                  <input type="checkbox" name="is_staff" value="true" id="staff-check" className="w-5 h-5 accent-[#0b3d41] cursor-pointer" />
-                  <Label htmlFor="staff-check" className="font-black text-[10px] uppercase text-[#0b3d41] cursor-pointer">Register as Staff Member</Label>
-                </div>
+                
+                {/* Hidden input to tell the server action which role we are creating */}
+                <input type="hidden" name="is_staff" value={formType === 'staff' ? 'true' : 'false'} />
+
                 <div className="space-y-1">
                   <Label className="font-bold text-[10px] uppercase text-slate-400">Full Name</Label>
-                  <Input name="full_name" placeholder="Full Name" className="font-medium bg-slate-50 border-0" required />
+                  <Input name="full_name" placeholder="Person's Name" className="font-medium bg-slate-50 border-0" required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400">Company / Dept</Label>
-                    <Input name="company_name" placeholder="Firm/Role" className="font-medium bg-slate-50 border-0" />
+
+                {/* Conditional Fields based on selection */}
+                {formType === 'exhibitor' ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10px] uppercase text-slate-400">Company Name</Label>
+                      <Input name="company_name" placeholder="Firm Name" className="font-medium bg-slate-50 border-0" required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Number</Label>
+                      <Input name="stall_number" placeholder="e.g. A-101" className="font-medium bg-slate-50 border-0" required />
+                    </div>
                   </div>
+                ) : (
                   <div className="space-y-1">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400">Stall (Exhibitor)</Label>
-                    <Input name="stall_number" placeholder="A-101" className="font-medium bg-slate-50 border-0" />
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Assigned Role / Dept</Label>
+                    <Input name="company_name" placeholder="e.g. Registration Desk" className="font-medium bg-slate-50 border-0" required />
                   </div>
-                </div>
+                )}
+
                 <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Email Address</Label>
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Login Email</Label>
                   <Input name="email" type="email" placeholder="user@email.com" className="font-medium bg-slate-50 border-0" required />
                 </div>
+                
                 <div className="space-y-1">
                   <Label className="font-bold text-[10px] uppercase text-slate-400">Password</Label>
                   <Input name="password" type="text" defaultValue="Expo@2026" className="font-medium bg-slate-50 border-0" required />
                 </div>
-                <Button type="submit" className="w-full bg-[#ef6c33] hover:bg-[#d45a27] font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg shadow-orange-100">Create Account</Button>
+
+                <Button 
+                  type="submit" 
+                  className={`w-full font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg ${formType === 'staff' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' : 'bg-[#ef6c33] hover:bg-[#d45a27] shadow-orange-100'}`}
+                >
+                  Create {formType === 'staff' ? 'Staff' : 'Exhibitor'} Account
+                </Button>
               </form>
             </CardContent>
           </Card>
