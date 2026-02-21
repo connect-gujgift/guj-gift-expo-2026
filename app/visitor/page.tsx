@@ -36,7 +36,7 @@ export default function VisitorPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
       {/* Back Button */}
       <div className="w-full max-w-[400px] mb-6">
@@ -51,7 +51,7 @@ export default function VisitorPortal() {
 
       {/* Lookup Form */}
       {!visitorPass ? (
-        <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-3xl bg-white">
+        <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
           <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
             <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
             <CardTitle className="text-xl font-black uppercase tracking-tight italic">Visitor Portal</CardTitle>
@@ -89,38 +89,85 @@ export default function VisitorPortal() {
           </CardContent>
         </Card>
       ) : (
-        /* The Digital Pass Display */
-        <Card className="w-full max-w-[350px] border-0 shadow-2xl overflow-hidden rounded-3xl bg-white">
-          <div className="bg-[#ef6c33] p-6 text-center text-white relative">
-            <Button 
-                variant="ghost" 
-                className="absolute top-2 left-2 text-white/70 hover:text-white"
-                onClick={() => setVisitorPass(null)}
-            >
-                ✕
-            </Button>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Guj Gift Expo 2026</p>
-            <h2 className="text-2xl font-black uppercase tracking-tighter leading-none">{visitorPass.full_name}</h2>
-            <p className="text-xs font-bold uppercase mt-2 opacity-90">{visitorPass.company_name || 'Visitor'}</p>
-          </div>
-          
-          <CardContent className="p-8 flex flex-col items-center bg-slate-50">
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-6">
-              <QRCode value={visitorPass.id} size={180} fgColor="#0b3d41" />
-            </div>
+        /* The Digital Pass Display - Samuel Design */
+        <div className="w-full max-w-[350px] flex flex-col items-center">
+          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
             
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center mb-6">
-              Present this QR code at <br/> exhibitor stalls to connect.
-            </p>
+            {/* Close button */}
+            <Button variant="ghost" className="absolute top-4 right-4 z-20 text-slate-400 hover:text-slate-800" onClick={() => setVisitorPass(null)}>✕</Button>
+            
+            {/* 1. TOP LIGHT ARCH/HEADER */}
+            <div className="bg-[#f0f6f6] pt-8 pb-10 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain drop-shadow-sm" />
+            </div>
 
-            <Button 
-              onClick={() => window.open(`/badge/print?id=${visitorPass.id}`, '_blank')}
-              className="w-full bg-[#0b3d41] hover:bg-slate-800 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all text-white"
-            >
-              Download / Print Pass
-            </Button>
-          </CardContent>
-        </Card>
+            {/* 2. OVERLAPPING PILL */}
+            <div className="flex justify-center -mt-5 relative z-10">
+              <div className="bg-[#ef6c33] text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm">
+                Valued Visitor
+              </div>
+            </div>
+
+            {/* 3. MIDDLE BODY (QR & NAME) */}
+            <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-5 text-center items-center">
+              {/* QR Code bordered box */}
+              <div className="p-2 border-[3px] border-[#ef6c33] rounded-2xl bg-white inline-block">
+                <QRCode value={visitorPass.id} size={130} fgColor="#0b3d41" level="H" />
+              </div>
+              
+              {/* Name & Role */}
+              <div className="flex flex-col items-center">
+                <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words">
+                  {visitorPass.full_name}
+                </h2>
+                <p className="text-sm font-black text-[#ef6c33] uppercase tracking-widest mt-1">
+                  Visitor
+                </p>
+              </div>
+
+              {/* Company / Firm */}
+              <div className="border-t border-slate-100 w-full pt-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Company / Firm</p>
+                <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
+                  {visitorPass.company_name || 'Individual'}
+                </p>
+              </div>
+            </div>
+
+            {/* 4. DARK TEAL EVENT INFO STRIP */}
+            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full">
+              <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 Aug 2026</p>
+              </div>
+              <div className="w-1/2 pl-4 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
+                <p className="text-[10px] font-black uppercase tracking-widest leading-none">GMDC Ground</p>
+              </div>
+            </div>
+
+            {/* 5. BOTTOM ORGANIZER FOOTER */}
+            <div className="bg-slate-50 px-6 py-4 flex items-center justify-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+              </div>
+              <div className="text-left">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-wide">Shree Balaji Event LLP</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Action Button */}
+          <div className="w-full mt-6">
+              <Button 
+                  onClick={() => window.open(`/badge/print?id=${visitorPass.id}`, '_blank')}
+                  className="w-full bg-[#0b3d41] hover:bg-slate-800 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all text-white"
+              >
+                  Save / Print Digital Pass
+              </Button>
+          </div>
+        </div>
       )}
     </div>
   )
