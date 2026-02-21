@@ -41,4 +41,4 @@ export async function createExhibitorAction(prevState: any, formData: FormData) 
   } catch (err: any) {
     return { success: false, message: err.message }
   }
-}
+}   
