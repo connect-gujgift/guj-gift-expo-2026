@@ -15,6 +15,7 @@ export default function PublicRegistration() {
   const [error, setError] = useState('')
   const [visitorPass, setVisitorPass] = useState<any>(null)
 
+  // Notice: We removed password and added phone to match the DB
   const [formData, setFormData] = useState({
     full_name: '',
     company_name: '',
@@ -35,12 +36,12 @@ export default function PublicRegistration() {
       .single()
 
     if (existingUser) {
-      setError('This phone number is already registered! Please use the Visitor Portal to retrieve your pass.')
+      setError('This phone number is already registered! Please log in via the Visitor Portal.')
       setLoading(false)
       return
     }
 
-    // 2. Insert the new visitor
+    // 2. Insert the new visitor directly (No Auth/Password required)
     const { data, error: insertError } = await supabase
       .from('visitors')
       .insert([formData])
@@ -140,6 +141,18 @@ export default function PublicRegistration() {
                 {loading ? 'Processing...' : 'Generate Digital Pass'}
               </Button>
             </form>
+            
+            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    Already registered?{' '}
+                    <span 
+                        className="text-[#0b3d41] cursor-pointer hover:underline"
+                        onClick={() => router.push('/visitor')}
+                    >
+                        Retrieve Pass Here
+                    </span>
+                </p>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -151,7 +164,14 @@ export default function PublicRegistration() {
           </div>
 
           <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-3xl bg-white">
-            <div className="bg-[#ef6c33] p-6 text-center text-white">
+            <div className="bg-[#ef6c33] p-6 text-center text-white relative">
+              <Button 
+                  variant="ghost" 
+                  className="absolute top-2 left-2 text-white/70 hover:text-white"
+                  onClick={() => setVisitorPass(null)}
+              >
+                  ✕
+              </Button>
               <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Guj Gift Expo 2026</p>
               <h2 className="text-2xl font-black uppercase tracking-tighter leading-none">{visitorPass.full_name}</h2>
               <p className="text-xs font-bold uppercase mt-2 opacity-90">{visitorPass.company_name}</p>
