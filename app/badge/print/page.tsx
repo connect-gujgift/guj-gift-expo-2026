@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import QRCode from "react-qr-code"
 
-// --- THE ACTUAL BADGE CONTENT ---
 function BadgeContent() {
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
@@ -23,8 +22,8 @@ function BadgeContent() {
         
         if (data) {
           setVisitor(data)
-          // Small delay to ensure QR code renders before print dialog pops up
-          setTimeout(() => window.print(), 1000)
+          // 1.5 second delay to ensure QR code and images fully render before the print dialog opens
+          setTimeout(() => window.print(), 1500)
         }
         setLoading(false)
       }
@@ -32,55 +31,100 @@ function BadgeContent() {
     }
   }, [id])
 
-  if (loading) return <p className="p-10 text-center uppercase font-black text-slate-400">Loading Badge...</p>
+  if (loading) return <p className="p-10 text-center uppercase font-black text-slate-400">Loading Digital Pass...</p>
   if (!visitor) return <p className="p-10 text-center uppercase font-black text-red-500">Visitor Not Found</p>
 
   return (
-    <div className="flex justify-center items-start pt-10 bg-white min-h-screen">
-      {/* THE BADGE (Sized for standard thermal/ID printers) */}
-      <div className="w-[320px] border-2 border-slate-100 p-6 flex flex-col items-center text-center rounded-xl">
-         <img src="/event-logo.png" alt="Logo" className="h-20 mb-4 object-contain" />
+    <div className="flex justify-center items-start pt-10 pb-20 bg-slate-200 min-h-screen print:bg-white print:pt-0 print:pb-0">
+      
+      {/* MAIN BADGE CONTAINER 
+        The 'print:' classes ensure shadows and rounded corners are removed during physical printing 
+        to perfectly fit badge paper.
+      */}
+      <div className="w-[400px] rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden bg-white flex flex-col font-sans relative print:w-full print:max-w-[400px] print:shadow-none print:border-none print:rounded-none">
          
-         <div className="bg-[#ef6c33] text-white px-6 py-1 rounded-full text-[10px] font-black mb-4 uppercase tracking-widest">
-            Valued Visitor
-         </div>
-         
-         <h2 className="text-2xl font-black text-[#0b3d41] uppercase mb-1 leading-tight">
-            {visitor.full_name}
-         </h2>
-         <p className="text-xs font-bold text-[#ef6c33] uppercase mb-5 tracking-widest">
-            Visitor
-         </p>
-         
-         <div className="p-2 border-2 border-[#0b3d41] rounded-2xl mb-6">
-            <QRCode value={visitor.id} size={140} fgColor="#0b3d41" level="H" />
+         {/* 1. TOP LIGHT ARCH/HEADER */}
+         <div className="bg-[#f0f6f6] pt-10 pb-12 flex justify-center">
+             <img src="/event-logo.png" alt="Guj Gift Expo" className="h-28 object-contain drop-shadow-sm" />
          </div>
 
-         <div className="border-t border-slate-100 pt-4 w-full">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Company / Firm</p>
-            <p className="text-sm font-bold text-[#0b3d41] uppercase mt-1">
-                {visitor.company_name || 'Individual'}
-            </p>
+         {/* 2. OVERLAPPING PILL */}
+         <div className="flex justify-center -mt-6 relative z-10">
+             <div className="bg-[#ef6c33] text-white px-8 py-2.5 rounded-full text-sm font-black uppercase tracking-widest border-4 border-white shadow-sm">
+                 Valued Visitor
+             </div>
          </div>
 
-         <div className="mt-8 pt-4 border-t border-dotted w-full">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-                GGE 2026 | GMDC Ground, Ahmedabad
-            </p>
-            <p className="text-[7px] font-bold text-slate-300 uppercase mt-1">
-                Organized by Shree Balaji Event LLP
-            </p>
+         {/* 3. MIDDLE BODY (QR & NAME) */}
+         <div className="px-8 pt-8 pb-8 bg-white flex-col flex gap-8">
+             
+             {/* QR & Name Row */}
+             <div className="flex items-center gap-6">
+                 {/* QR Code bordered box */}
+                 <div className="p-2 border-[4px] border-[#ef6c33] rounded-[1.5rem] flex-shrink-0 bg-white">
+                     <QRCode value={visitor.id} size={110} fgColor="#0b3d41" level="H" />
+                 </div>
+                 
+                 {/* Name & Role */}
+                 <div className="flex flex-col">
+                     <h2 className="text-4xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words">
+                         {visitor.full_name}
+                     </h2>
+                     <p className="text-lg font-black text-[#ef6c33] uppercase tracking-widest mt-1">
+                         Visitor
+                     </p>
+                 </div>
+             </div>
+
+             {/* Company / Firm */}
+             <div className="border-t border-slate-100 pt-5">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Company / Firm</p>
+                 <p className="text-2xl font-black text-[#0b3d41] uppercase leading-tight">
+                     {visitor.company_name || 'Individual'}
+                 </p>
+             </div>
          </div>
+
+         {/* 4. DARK TEAL EVENT INFO STRIP */}
+         <div className="bg-[#0b3d41] text-white flex px-8 py-5 w-full">
+             <div className="w-1/2 pr-4 border-r border-teal-700/50">
+                 <p className="text-[9px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                 <p className="text-xs font-black uppercase tracking-widest leading-none">12-14 Aug 2026</p>
+             </div>
+             <div className="w-1/2 pl-6">
+                 <p className="text-[9px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
+                 <p className="text-xs font-black uppercase tracking-widest leading-none">GMDC Ground, Ahmedabad</p>
+             </div>
+         </div>
+
+         {/* 5. BOTTOM ORGANIZER FOOTER */}
+         <div className="bg-white px-8 py-6 flex items-center justify-center gap-4">
+             {/* Organizer Logo Placeholder 
+                (It will silently hide itself if you don't have an 'organizer-logo.png' in your public folder)
+             */}
+             <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+                 <img 
+                    src="/organizer-logo.png" 
+                    alt="Organizer Logo" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => e.currentTarget.style.display = 'none'} 
+                 />
+             </div>
+             <div className="text-left">
+                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                 <p className="text-xs font-black text-[#0b3d41] uppercase tracking-wide">Shree Balaji Event LLP</p>
+             </div>
+         </div>
+
       </div>
     </div>
   )
 }
 
-// --- MAIN PAGE COMPONENT WITH SUSPENSE BOUNDARY ---
-export default function PrintBadgePage() {
+// Wrapping in Suspense to safely build with Next.js useSearchParams
+export default function FinalPrintBadgePage() {
   return (
-    // Suspense is required for useSearchParams() to work in Next.js builds
-    <Suspense fallback={<div className="p-20 text-center font-black uppercase text-slate-400">Preparing Print Job...</div>}>
+    <Suspense fallback={<div className="p-20 text-center font-black uppercase text-slate-400">Loading...</div>}>
       <BadgeContent />
     </Suspense>
   )
