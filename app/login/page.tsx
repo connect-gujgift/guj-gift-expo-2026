@@ -85,7 +85,7 @@ export default function GlobalLoginHub() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer group" onClick={() => setSelectedRole('visitor')}>
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer group" onClick={() => router.push('/visitor')}>
               <CardContent className="p-8 flex flex-col items-center justify-center bg-white group-hover:bg-slate-50 rounded-xl">
                 <span className="text-4xl mb-3">🎟️</span>
                 <h2 className="text-lg font-black uppercase tracking-tight">Visitor Portal</h2>
