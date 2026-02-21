@@ -7,7 +7,7 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen">
       
       {/* HERO SECTION */}
-      <section className="relative h-[600px] flex items-center justify-center text-center text-white">
+      <section className="relative h-[600px] flex items-center justify-center text-center text-white bg-slate-900">
         {/* Background Image with Dark Overlay */}
         <div className="absolute inset-0 z-0">
           <Image 
@@ -15,7 +15,9 @@ export default function LandingPage() {
             alt="Guj Gift Expo Hall" 
             fill 
             className="object-cover brightness-50" // Darkens image so text pops
-            priority
+            priority // Forces immediate loading
+            sizes="100vw" // Tells Next.js to optimize for full-width screens
+            quality={80} // Compresses the image to 80% quality for faster loading
           />
         </div>
 
@@ -32,14 +34,14 @@ export default function LandingPage() {
           <div className="flex gap-4 justify-center pt-4">
              {/* Primary Call to Action */}
             <Link href="/register">
-              <Button size="lg" className="text-lg px-8 py-6 bg-orange-600 hover:bg-orange-700 font-bold">
+              <Button size="lg" className="text-lg px-8 py-6 bg-orange-600 hover:bg-orange-700 font-bold shadow-lg shadow-orange-900/50 transition-all">
                 Register as Visitor
               </Button>
             </Link>
             
             {/* Secondary Call to Action */}
             <Link href="/login">
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6 bg-white/10 hover:bg-white/20 text-white border-white">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-6 bg-white/10 hover:bg-white/20 text-white border-white backdrop-blur-sm transition-all">
                 Already Registered? Login
               </Button>
             </Link>
@@ -50,15 +52,15 @@ export default function LandingPage() {
       {/* INFO SECTION */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm">
+          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-2xl font-bold mb-2">📅 500+ Exhibitors</h3>
             <p className="text-gray-600">Meet top manufacturers and suppliers from across India under one roof.</p>
           </div>
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm">
+          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-2xl font-bold mb-2">🤝 B2B Networking</h3>
             <p className="text-gray-600">Schedule meetings directly through this app and build lasting partnerships.</p>
           </div>
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm">
+          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-2xl font-bold mb-2">🚀 Exclusive Trends</h3>
             <p className="text-gray-600">Be the first to see the 2026 corporate gifting collection before anyone else.</p>
           </div>
