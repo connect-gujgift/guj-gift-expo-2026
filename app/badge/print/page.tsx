@@ -14,15 +14,9 @@ function BadgeContent() {
   useEffect(() => {
     if (id) {
       const fetchVisitor = async () => {
-        const { data, error } = await supabase
-          .from('visitors')
-          .select('*')
-          .eq('id', id)
-          .single()
-        
+        const { data } = await supabase.from('visitors').select('*').eq('id', id).single()
         if (data) {
           setVisitor(data)
-          // 1.5 second delay to ensure QR code and images fully render before the print dialog opens
           setTimeout(() => window.print(), 1500)
         }
         setLoading(false)
@@ -36,12 +30,18 @@ function BadgeContent() {
 
   return (
     <>
-      {/* MAGIC PRINT STYLES: 
-        This completely overrides Next.js global layouts. It hides the global footer, 
-        removes browser URL/Date headers, and isolates ONLY the badge for printing.
-      */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
+          @page {
+            size: 4in 6in; /* Forces the PDF to be exactly 4x6 badge-sized */
+            margin: 0;
+          }
+          html, body {
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+          }
           body * {
             visibility: hidden;
           }
@@ -49,92 +49,83 @@ function BadgeContent() {
             visibility: visible;
           }
           #printable-badge {
-            position: absolute;
+            position: absolute; /* Pulls badge out of the normal layout flow */
             left: 0;
             top: 0;
+            width: 100%;
+            height: 100%;
             margin: 0;
             padding: 0;
-          }
-          @page {
-            size: auto;
-            margin: 0mm; /* Removes the ugly URL and Date text at the top/bottom of the paper */
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
           }
         }
       `}} />
 
       <div className="flex justify-center items-start pt-10 pb-20 bg-slate-200 min-h-screen print:bg-white print:p-0">
         
-        {/* MAIN BADGE CONTAINER */}
-        <div id="printable-badge" className="w-[384px] rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden bg-white flex flex-col font-sans relative print:w-full print:max-w-[384px] print:shadow-none print:border-none print:rounded-none">
+        {/* MAIN BADGE CONTAINER - Condensed vertical spacing */}
+        <div id="printable-badge" className="w-[384px] rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden bg-white flex flex-col font-sans relative">
           
           {/* 1. TOP EVENT LOGO */}
-          <div className="bg-white pt-6 pb-4 flex justify-center">
-              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-24 object-contain" />
+          <div className="bg-white pt-4 pb-3 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
           </div>
 
           {/* 2. OVERLAPPING PILL */}
-          <div className="flex justify-center -mt-5 relative z-10">
-              <div className="bg-[#ef6c33] text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-widest border-4 border-white shadow-sm">
+          <div className="flex justify-center -mt-4 relative z-10">
+              <div className="bg-[#ef6c33] text-white px-8 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm">
                   Valued Visitor
               </div>
           </div>
 
           {/* 3. MIDDLE BODY (QR & NAME) */}
-          <div className="px-6 pt-8 pb-8 bg-white flex-col flex gap-8 text-center">
+          <div className="px-6 pt-5 pb-5 bg-white flex-col flex gap-4 text-center">
               
-              {/* QR & Name Row */}
-              <div className="flex flex-col items-center gap-4">
-                  {/* QR Code bordered box */}
+              <div className="flex flex-col items-center gap-3">
                   <div className="p-2 border-[3px] border-[#ef6c33] rounded-2xl flex-shrink-0 bg-white">
-                      <QRCode value={visitor.id} size={120} fgColor="#0b3d41" level="H" />
+                      <QRCode value={visitor.id} size={110} fgColor="#0b3d41" level="H" />
                   </div>
                   
-                  {/* Name & Role */}
                   <div className="flex flex-col">
-                      <h2 className="text-3xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words">
+                      <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words">
                           {visitor.full_name}
                       </h2>
-                      <p className="text-base font-black text-[#ef6c33] uppercase tracking-widest mt-1">
+                      <p className="text-xs font-black text-[#ef6c33] uppercase tracking-widest mt-1">
                           Visitor
                       </p>
                   </div>
               </div>
 
-              {/* Company / Firm */}
-              <div className="border-t border-slate-100 pt-5 w-full">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Company / Firm</p>
-                  <p className="text-xl font-black text-[#0b3d41] uppercase leading-tight">
+              <div className="border-t border-slate-100 pt-3 w-full">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Company / Firm</p>
+                  <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
                       {visitor.company_name || 'Individual'}
                   </p>
               </div>
           </div>
 
           {/* 4. DARK TEAL EVENT INFO STRIP */}
-          <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full items-center">
+          <div className="bg-[#0b3d41] text-white flex px-6 py-3 w-full items-center">
               <div className="w-[45%] pr-4 border-r border-teal-700/50">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
-                  <p className="text-xs font-black uppercase tracking-widest leading-none">12-14 Aug 2026</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 Aug 2026</p>
               </div>
               <div className="w-[55%] pl-4">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
-                  {/* Adjusted font size here to prevent the long text from breaking awkwardly */}
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
                   <p className="text-[9px] font-black uppercase tracking-wide leading-tight">GMDC UNIVERSITY GROUND, AHMEDABAD</p>
               </div>
           </div>
 
           {/* 5. BOTTOM ORGANIZER FOOTER */}
-          <div className="bg-white px-6 py-5 flex flex-col items-center justify-center gap-2">
-              <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
-                  <img 
-                      src="/organizer-logo.png" 
-                      alt="Organizer Logo" 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => e.currentTarget.style.display = 'none'} 
-                  />
+          <div className="bg-white px-6 py-3 flex flex-col items-center justify-center gap-1.5">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+                  <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
               </div>
               <div className="text-center">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
-                  <p className="text-xs font-black text-[#0b3d41] uppercase tracking-wide">Shree Balaji Event LLP</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                  <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-wide">Shree Balaji Event LLP</p>
               </div>
           </div>
 
@@ -144,7 +135,6 @@ function BadgeContent() {
   )
 }
 
-// Wrapping in Suspense to safely build with Next.js useSearchParams
 export default function FinalPrintBadgePage() {
   return (
     <Suspense fallback={<div className="p-20 text-center font-black uppercase text-slate-400">Loading...</div>}>
