@@ -44,7 +44,7 @@ export default function GlobalLoginHub() {
           .single()
 
         // Set your exact Super Admin email here
-        const isAdmin = data.user.email === 'connect@gujtravelexpo.com'
+        const isAdmin = data.user.email === 'maulikshah.13@gmail.com'
 
         // --- STRICT ROLE VALIDATION ---
         if (selectedRole === 'admin') {
