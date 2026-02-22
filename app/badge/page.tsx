@@ -4,157 +4,224 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import QRCode from "react-qr-code"
-import { Card } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 function BadgeDisplay() {
   const searchParams = useSearchParams()
   const urlId = searchParams.get('id')
   const router = useRouter()
+  
   const [person, setPerson] = useState<any>(null)
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
+  
+  // Fallback state for when the ID goes missing
+  const [needsLookup, setNeedsLookup] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [lookupError, setLookupError] = useState('')
+  const [lookupLoading, setLookupLoading] = useState(false)
 
   useEffect(() => {
-    // SMART ID CHECK: Look at the URL first. If it's missing, grab the logged-in session!
-    const resolveId = () => {
-      if (urlId) return urlId;
-      
-      try {
-        const exhibitorSession = localStorage.getItem('activeExhibitor');
-        if (exhibitorSession) return JSON.parse(exhibitorSession).id;
-        
-        const visitorSession = localStorage.getItem('activeVisitor');
-        if (visitorSession) return JSON.parse(visitorSession).id;
-      } catch (error) {
-        console.error("No active session found");
-      }
-      return null;
-    };
-
-    const targetId = resolveId();
-
-    if (targetId) {
-      const fetchPerson = async () => {
-        // 1. Check Visitors
-        let { data } = await supabase.from('visitors').select('*').eq('id', targetId).single()
-        let userRole = 'VISITOR'
-
-        // 2. Check Exhibitors if not a Visitor
-        if (!data) {
-          const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('id', targetId).single()
-          if (exhibitorData) {
-            data = exhibitorData
-            userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
-          }
-        }
-
-        if (data) {
-          setPerson(data)
-          setRole(userRole)
-        }
-        setLoading(false)
-      }
-      fetchPerson()
+    if (urlId) {
+      // If we have an ID in the URL, load the badge immediately
+      fetchPersonById(urlId)
     } else {
-        setLoading(false)
+      // No ID found? Don't crash! Just show the fallback phone lookup form.
+      setLoading(false)
+      setNeedsLookup(true)
     }
   }, [urlId])
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-widest uppercase text-xs">Loading Digital Pass...</div>
-  if (!person) return <div className="min-h-screen flex items-center justify-center text-red-500 font-bold tracking-widest uppercase text-xs">Badge Not Found</div>
+  const fetchPersonById = async (targetId: string) => {
+    setLoading(true)
+    
+    let { data } = await supabase.from('visitors').select('*').eq('id', targetId).single()
+    let userRole = 'VISITOR'
 
-  const stallNumber = person.stall_number || person.stall_no || person.stall || person.Stall || '';
+    if (!data) {
+      const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('id', targetId).single()
+      if (exhibitorData) {
+        data = exhibitorData
+        userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
+      }
+    }
+
+    if (data) {
+      setPerson(data)
+      setRole(userRole)
+      setNeedsLookup(false)
+    } else {
+      setNeedsLookup(true)
+    }
+    setLoading(false)
+  }
+
+  const handlePhoneLookup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLookupLoading(true)
+    setLookupError('')
+
+    // 1. Check Visitors first
+    let { data } = await supabase.from('visitors').select('*').eq('phone', phone).single()
+    let userRole = 'VISITOR'
+
+    // 2. Check Exhibitors next
+    if (!data) {
+      const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('phone', phone).single()
+      if (exhibitorData) {
+        data = exhibitorData
+        userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
+      }
+    }
+
+    if (data) {
+      setPerson(data)
+      setRole(userRole)
+      setNeedsLookup(false)
+    } else {
+      setLookupError('No pass found for this phone number.')
+    }
+    setLookupLoading(false)
+  }
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-widest uppercase text-xs">Loading Digital Pass...</div>
+
+  const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
       {/* Top Header Logo */}
-      <div className="w-full max-w-[350px] mb-8 flex justify-center opacity-50">
-          <img src="/event-logo.png" alt="GGE 2026" className="h-12 object-contain grayscale" />
+      <div className="w-full max-w-[350px] mb-6 flex justify-between items-center opacity-50">
+          <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-[10px] font-black tracking-widest uppercase p-0 hover:bg-transparent">
+             ← Back
+          </Button>
+          <img src="/event-logo.png" alt="GGE 2026" className="h-8 object-contain grayscale" />
       </div>
 
-      <div className="w-full max-w-[350px] flex flex-col items-center">
-        <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
+      {needsLookup && !person ? (
+        /* FALLBACK: The Self-Healing Phone Lookup Form */
+        <Card className="w-full max-w-[350px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
+          <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
+            <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
+            <CardTitle className="text-xl font-black uppercase tracking-tight italic">Find My Badge</CardTitle>
+            <p className="text-[10px] font-bold text-teal-200 uppercase tracking-widest mt-1 opacity-80">Enter Phone Number to Continue</p>
+          </CardHeader>
           
-          {/* 1. TOP LOGO */}
-          <div className="bg-white pt-6 pb-4 flex justify-center">
-            <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
-          </div>
+          <CardContent className="p-8">
+            <form onSubmit={handlePhoneLookup} className="space-y-6">
+              {lookupError && (
+                <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-600 text-[10px] font-black uppercase leading-tight">
+                  {lookupError}
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Registered Phone Number</Label>
+                <Input 
+                  type="text" 
+                  placeholder="e.g. 9876543210" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  className="bg-slate-50 border-0 h-12 font-medium text-center tracking-widest"
+                />
+              </div>
 
-          {/* 2. OVERLAPPING PILL */}
-          <div className="flex justify-center -mt-5 relative z-10">
-            <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm`}>
-              {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
-            </div>
-          </div>
-
-          {/* 3. MIDDLE BODY */}
-          <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-5 text-center items-center">
-            <div className={`p-2 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-2xl bg-white inline-block`}>
-              <QRCode value={person.id} size={130} fgColor="#0b3d41" level="H" />
-            </div>
-            
-            <div className="flex flex-col items-center">
-              <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words text-center">
-                {person.full_name}
-              </h2>
-              <p className={`text-sm font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1`}>
-                {role}
-              </p>
-            </div>
-
-            <div className="border-t border-slate-100 w-full pt-4">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                {stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
-              </p>
-              <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
-                {person.company_name || 'Individual'}
-              </p>
-            </div>
-          </div>
-
-          {/* 4. DARK TEAL STRIP */}
-          <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full">
-            <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
-              <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
-              <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
-            </div>
-            <div className="w-1/2 pl-4 text-left">
-              <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
-              <p className="text-[9px] font-black uppercase tracking-wide leading-tight">GMDC UNIVERSITY GROUND,<br/>AHMEDABAD</p>
-            </div>
-          </div>
-
-          {/* 5. FOOTER */}
-          <div className="bg-slate-50 px-6 py-4 flex items-center justify-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
-              <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-            </div>
-            <div className="text-left">
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
-              <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-wide">SHREE BALAJI EVENT LLP</p>
-            </div>
-          </div>
+              <Button 
+                type="submit" 
+                disabled={lookupLoading}
+                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white"
+              >
+                {lookupLoading ? 'Searching...' : 'Retrieve Pass'}
+              </Button>
+            </form>
+          </CardContent>
         </Card>
+      ) : (
+        /* THE BADGE DISPLAY */
+        <div className="w-full max-w-[350px] flex flex-col items-center">
+          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
+            
+            <div className="bg-white pt-6 pb-4 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
+            </div>
 
-        {/* ACTIONS */}
-        <div className="w-full mt-6 space-y-3">
-          <Button 
-              onClick={() => window.open(`/badge/print?id=${person.id}`, '_blank')}
-              className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white"
-          >
-              🖨️ Print / Download Pass
-          </Button>
-          <Button 
-              onClick={() => router.push('/dashboard')}
-              variant="ghost"
-              className="w-full text-slate-400 hover:text-slate-800 font-bold uppercase tracking-widest text-[10px]"
-          >
-              Skip to Dashboard →
-          </Button>
+            <div className="flex justify-center -mt-5 relative z-10">
+              <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm`}>
+                {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
+              </div>
+            </div>
+
+            <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-5 text-center items-center">
+              <div className={`p-2 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-2xl bg-white inline-block`}>
+                <QRCode value={person.id} size={130} fgColor="#0b3d41" level="H" />
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words text-center">
+                  {person.full_name}
+                </h2>
+                <p className={`text-sm font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1`}>
+                  {role}
+                </p>
+              </div>
+
+              <div className="border-t border-slate-100 w-full pt-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  {stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
+                </p>
+                <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
+                  {person.company_name || 'Individual'}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full">
+              <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
+              </div>
+              <div className="w-1/2 pl-4 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
+                <p className="text-[9px] font-black uppercase tracking-wide leading-tight">GMDC UNIVERSITY GROUND,<br/>AHMEDABAD</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 flex items-center justify-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+              </div>
+              <div className="text-left">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-wide">SHREE BALAJI EVENT LLP</p>
+              </div>
+            </div>
+          </Card>
+
+          <div className="w-full mt-6 space-y-3">
+            <Button 
+                onClick={() => window.open(`/badge/print?id=${person.id}`, '_blank')}
+                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white"
+            >
+                🖨️ Print / Download Pass
+            </Button>
+            <Button 
+                onClick={() => {
+                    setPerson(null);
+                    setNeedsLookup(true);
+                }}
+                variant="ghost"
+                className="w-full text-slate-400 hover:text-slate-800 font-bold uppercase tracking-widest text-[10px]"
+            >
+                Not your badge? Search again
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
