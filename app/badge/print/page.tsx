@@ -79,11 +79,11 @@ function BadgeContent() {
             box-shadow: none !important;
             border: none !important;
             margin: 0 !important;
-            background: transparent !important; /* Ensures white background doesn't overwrite your physical paper */
+            background: transparent !important; /* Ensures digital white bg doesn't print over stock */
           }
 
-          /* MAGIC PRE-PRINT TRICK: Hides the graphics but keeps their physical space so the layout doesn't collapse */
-          .hide-on-print {
+          /* MAGIC PRE-PRINT TRICK: Hides the pre-printed graphics but keeps their physical space */
+          .pre-printed-element {
             visibility: hidden !important;
             opacity: 0 !important;
           }
@@ -97,38 +97,39 @@ function BadgeContent() {
           <div id="printable-badge" className="w-[384px] rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden bg-white flex flex-col font-sans relative">
             
             {/* 1. TOP EVENT LOGO (Hidden on Print) */}
-            <div className="bg-white print:bg-transparent pt-6 pb-4 flex justify-center hide-on-print">
+            {/* The background band is removed; it is now pure white/transparent */}
+            <div className="pt-8 pb-4 flex justify-center pre-printed-element">
                 <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
             </div>
 
-            {/* 2. OVERLAPPING PILL (Visible on Print) */}
-            <div className="flex justify-center -mt-4 relative z-10">
+            {/* 2. OVERLAPPING PILL (Hidden on Print because it is on the stock paper) */}
+            <div className="flex justify-center -mt-4 relative z-10 pre-printed-element">
                 <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-8 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm`}>
-                    {role === 'VISITOR' ? 'VALUED VISITOR' : role}
+                    {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
                 </div>
             </div>
 
-            {/* 3. MIDDLE BODY: QR & NAME (Visible on Print) */}
-            <div className="px-6 pt-6 pb-6 print:bg-transparent bg-white flex-col flex gap-4 text-center">
+            {/* 3. MIDDLE BODY: QR & NAME (VISIBLE ON PRINT) */}
+            <div className="px-6 pt-8 pb-6 bg-transparent flex-col flex gap-4 text-center">
                 
-                <div className="flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center gap-4">
                     <div className={`p-2 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-2xl flex-shrink-0 bg-white`}>
-                        <QRCode value={person.id} size={130} fgColor="#0b3d41" level="M" />
+                        <QRCode value={person.id} size={140} fgColor="#0b3d41" level="M" />
                     </div>
                     
-                    <div className="flex flex-col">
-                        <h2 className="text-3xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words mt-2">
+                    <div className="flex flex-col mt-2">
+                        <h2 className="text-3xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words">
                             {person.full_name}
                         </h2>
-                        <p className={`text-sm font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1`}>
+                        <p className={`text-sm font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1.5`}>
                             {role}
                         </p>
                     </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-4 w-full mt-2">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                        {role === 'EXHIBITOR' && person.stall_number ? `Stall: ${person.stall_number}` : 'Company / Firm'}
+                <div className="border-t border-slate-100 pt-5 w-full mt-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                        {role === 'EXHIBITOR' && person.stall_number ? `STALL: ${person.stall_number}` : 'COMPANY / FIRM'}
                     </p>
                     <p className="text-xl font-black text-[#0b3d41] uppercase leading-tight">
                         {person.company_name || 'Individual'}
@@ -137,8 +138,8 @@ function BadgeContent() {
             </div>
 
             {/* 4. DARK TEAL EVENT INFO STRIP (Hidden on Print) */}
-            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full items-center hide-on-print">
-                <div className="w-[40%] pr-4 border-r border-teal-700/50">
+            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full items-center pre-printed-element mt-auto">
+                <div className="w-[40%] pr-4 border-r border-teal-700/50 text-left">
                     <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
                     <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
                 </div>
@@ -149,7 +150,7 @@ function BadgeContent() {
             </div>
 
             {/* 5. BOTTOM ORGANIZER FOOTER (Hidden on Print) */}
-            <div className="bg-slate-50 print:bg-transparent px-6 py-6 flex flex-col items-center justify-center gap-2 hide-on-print">
+            <div className="bg-slate-50 px-6 py-6 flex flex-col items-center justify-center gap-2 pre-printed-element">
                 <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
                     <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
                 </div>
