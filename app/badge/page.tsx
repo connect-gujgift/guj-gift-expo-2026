@@ -137,25 +137,24 @@ function BadgeDisplay() {
       ) : (
         <div className="w-full max-w-[320px] flex flex-col items-center">
           
-          {/* EXTREMELY COMPACT BADGE CARD */}
           <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[1.5rem] bg-white relative">
             
-            {/* TIGHT LOGO */}
-            <div className="bg-white pt-4 pb-2 flex justify-center">
-              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-12 object-contain" />
+            {/* UPDATED: Significantly larger Top Event Logo with reduced padding */}
+            <div className="bg-white pt-2 pb-1 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-[4.5rem] object-contain" />
             </div>
 
-            {/* TIGHT ROLE PILL */}
-            <div className="flex justify-center -mt-2 relative z-10">
+            {/* UPDATED: Pulled pill higher up to compensate for the larger logo */}
+            <div className="flex justify-center -mt-4 relative z-10">
               <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-4 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border-2 border-white shadow-sm`}>
                 {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
               </div>
             </div>
 
-            {/* TIGHT BODY SPACING */}
-            <div className="px-5 pt-3 pb-3 bg-white flex-col flex gap-2 text-center items-center">
+            {/* UPDATED: QR code squeezed slightly and padding reduced */}
+            <div className="px-5 pt-2 pb-2 bg-white flex-col flex gap-2 text-center items-center">
               <div className={`p-1 border-2 ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-xl bg-white inline-block`}>
-                <QRCode value={person.id} size={110} fgColor="#0b3d41" level="Q" />
+                <QRCode value={person.id} size={105} fgColor="#0b3d41" level="Q" />
               </div>
               
               <div className="flex flex-col items-center">
@@ -167,15 +166,14 @@ function BadgeDisplay() {
                 </p>
               </div>
 
-              {/* LOUD STALL NUMBER & COMPANY NAME */}
-              <div className="border-t border-slate-200 w-full pt-2 mt-1">
+              <div className="border-t border-slate-200 w-full pt-1.5 mt-0.5">
                 {stallNumber && (
-                    <div className="text-[#ef6c33] font-black text-xl leading-none mb-1 uppercase tracking-tighter">
+                    <div className="text-[#ef6c33] font-black text-[1.15rem] leading-none mb-1 uppercase tracking-tighter">
                         STALL: {stallNumber}
                     </div>
                 )}
                 {!stallNumber && (
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">COMPANY / FIRM</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 mt-0.5">COMPANY / FIRM</p>
                 )}
                 <p className="text-sm font-black text-[#0b3d41] uppercase leading-tight">
                   {person.company_name || 'Individual'}
@@ -183,7 +181,6 @@ function BadgeDisplay() {
               </div>
             </div>
 
-            {/* TIGHT INFO STRIPS */}
             <div className="bg-[#0b3d41] text-white flex px-5 py-2 w-full">
               <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
                 <p className="text-[7px] font-bold uppercase tracking-widest text-teal-200/60 mb-0.5">Date</p>
@@ -195,9 +192,10 @@ function BadgeDisplay() {
               </div>
             </div>
 
-            <div className="bg-slate-50 px-5 py-2 flex items-center justify-center gap-2">
-              <div className="w-6 h-6 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
-                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+            {/* UPDATED: Much larger Organizer Logo with tighter wrapper padding */}
+            <div className="bg-slate-50 px-5 py-1.5 flex items-center justify-center gap-3">
+              <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover scale-110" onError={(e) => e.currentTarget.style.display = 'none'} />
               </div>
               <div className="text-left">
                 <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0">Organized By</p>
@@ -206,7 +204,6 @@ function BadgeDisplay() {
             </div>
           </Card>
 
-          {/* ACTIONS */}
           <div className="w-full mt-5 space-y-3">
             <Button 
                 onClick={() => window.open(`/badge/print?id=${person.id}`, '_blank')}
