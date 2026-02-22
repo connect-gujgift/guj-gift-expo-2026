@@ -46,7 +46,6 @@ function InstantPrintContent() {
         if (iframeDoc) {
           iframeDoc.open();
           
-          // The nested backticks are removed here and replaced with simple string addition
           iframeDoc.write(`
             <!DOCTYPE html>
             <html>
