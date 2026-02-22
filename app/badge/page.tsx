@@ -18,7 +18,6 @@ function BadgeDisplay() {
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
   
-  // Fallback state for when the ID goes missing
   const [needsLookup, setNeedsLookup] = useState(false)
   const [phone, setPhone] = useState('')
   const [lookupError, setLookupError] = useState('')
@@ -26,10 +25,8 @@ function BadgeDisplay() {
 
   useEffect(() => {
     if (urlId) {
-      // If we have an ID in the URL, load the badge immediately
       fetchPersonById(urlId)
     } else {
-      // No ID found? Don't crash! Just show the fallback phone lookup form.
       setLoading(false)
       setNeedsLookup(true)
     }
@@ -64,11 +61,9 @@ function BadgeDisplay() {
     setLookupLoading(true)
     setLookupError('')
 
-    // 1. Check Visitors first
     let { data } = await supabase.from('visitors').select('*').eq('phone', phone).single()
     let userRole = 'VISITOR'
 
-    // 2. Check Exhibitors next
     if (!data) {
       const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('phone', phone).single()
       if (exhibitorData) {
@@ -94,7 +89,6 @@ function BadgeDisplay() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
-      {/* Top Header Logo */}
       <div className="w-full max-w-[350px] mb-6 flex justify-between items-center opacity-50">
           <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-[10px] font-black tracking-widest uppercase p-0 hover:bg-transparent">
              ← Back
@@ -103,7 +97,6 @@ function BadgeDisplay() {
       </div>
 
       {needsLookup && !person ? (
-        /* FALLBACK: The Self-Healing Phone Lookup Form */
         <Card className="w-full max-w-[350px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
           <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
             <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
@@ -142,7 +135,6 @@ function BadgeDisplay() {
           </CardContent>
         </Card>
       ) : (
-        /* THE BADGE DISPLAY */
         <div className="w-full max-w-[350px] flex flex-col items-center">
           <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
             
@@ -170,13 +162,30 @@ function BadgeDisplay() {
                 </p>
               </div>
 
-              <div className="border-t border-slate-100 w-full pt-4">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  {stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
-                </p>
-                <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
-                  {person.company_name || 'Individual'}
-                </p>
+              {/* UPDATED: Prominent Company & Massive Stall Number Section */}
+              <div className="border-t border-slate-100 w-full pt-5 flex flex-col gap-4">
+                
+                <div>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      COMPANY / FIRM
+                    </p>
+                    <p className="text-xl font-black text-[#0b3d41] uppercase leading-tight">
+                      {person.company_name || 'Individual'}
+                    </p>
+                </div>
+
+                {/* The new massive Stall Number Box (Only shows if they have a stall) */}
+                {stallNumber && (
+                    <div className="bg-orange-50/80 border border-orange-100 px-6 py-3 rounded-2xl mx-auto min-w-[160px]">
+                        <p className="text-[9px] font-bold text-[#ef6c33] uppercase tracking-widest mb-0.5">
+                            Stall Number
+                        </p>
+                        <p className="text-3xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter">
+                            {stallNumber}
+                        </p>
+                    </div>
+                )}
+
               </div>
             </div>
 
