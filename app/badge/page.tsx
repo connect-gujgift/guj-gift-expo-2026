@@ -89,15 +89,15 @@ function BadgeDisplay() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
-      <div className="w-full max-w-[320px] mb-4 flex justify-between items-center opacity-50">
+      <div className="w-full max-w-[350px] mb-6 flex justify-between items-center opacity-50">
           <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-[10px] font-black tracking-widest uppercase p-0 hover:bg-transparent">
              ← Back
           </Button>
-          <img src="/event-logo.png" alt="GGE 2026" className="h-6 object-contain grayscale" />
+          <img src="/event-logo.png" alt="GGE 2026" className="h-8 object-contain grayscale" />
       </div>
 
       {needsLookup && !person ? (
-        <Card className="w-full max-w-[320px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
+        <Card className="w-full max-w-[350px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
           <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
             <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
             <CardTitle className="text-xl font-black uppercase tracking-tight italic">Find My Badge</CardTitle>
@@ -135,91 +135,72 @@ function BadgeDisplay() {
           </CardContent>
         </Card>
       ) : (
-        <div className="w-full max-w-[320px] flex flex-col items-center">
-          {/* MAX WIDTH TIGHTENED TO MATCH STANDARD BADGE PROPORTIONS */}
-          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white relative">
+        <div className="w-full max-w-[350px] flex flex-col items-center">
+          
+          {/* IDENTICAL SIZING TO VISITOR BADGE */}
+          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
             
-            {/* TIGHTENED TOP LOGO PADDING */}
-            <div className="bg-white pt-5 pb-3 flex justify-center">
-              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-16 object-contain" />
+            <div className="bg-white pt-6 pb-4 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
             </div>
 
-            {/* TIGHTENED PILL OVERLAP */}
-            <div className="flex justify-center -mt-4 relative z-10">
-              <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border-[3px] border-white shadow-sm`}>
+            <div className="flex justify-center -mt-5 relative z-10">
+              <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm`}>
                 {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
               </div>
             </div>
 
-            {/* TIGHTENED BODY PADDING AND GAPS */}
-            <div className="px-5 pt-5 pb-4 bg-white flex-col flex gap-3 text-center items-center">
-              <div className={`p-1.5 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-xl bg-white inline-block`}>
-                <QRCode value={person.id} size={115} fgColor="#0b3d41" level="M" />
+            <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-5 text-center items-center">
+              <div className={`p-2 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-2xl bg-white inline-block`}>
+                <QRCode value={person.id} size={130} fgColor="#0b3d41" level="H" />
               </div>
               
               <div className="flex flex-col items-center">
-                <h2 className="text-xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words text-center">
+                <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words text-center">
                   {person.full_name}
                 </h2>
-                <p className={`text-[11px] font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1`}>
+                <p className={`text-sm font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-1`}>
                   {role}
                 </p>
               </div>
 
-              <div className="border-t border-slate-100 w-full pt-3 flex flex-col gap-2">
-                
-                <div>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                      COMPANY / FIRM
-                    </p>
-                    <p className="text-base font-black text-[#0b3d41] uppercase leading-tight">
-                      {person.company_name || 'Individual'}
-                    </p>
-                </div>
-
-                {/* COMPACTED STALL NUMBER BOX */}
-                {stallNumber && (
-                    <div className="bg-orange-50/80 border border-orange-100 px-4 py-1.5 rounded-xl mx-auto min-w-[120px]">
-                        <p className="text-[8px] font-bold text-[#ef6c33] uppercase tracking-widest mb-0">
-                            Stall Number
-                        </p>
-                        <p className="text-xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter mt-0.5">
-                            {stallNumber}
-                        </p>
-                    </div>
-                )}
-
+              {/* STALL NUMBER INJECTED INLINE WITHOUT ADDING VERTICAL HEIGHT */}
+              <div className="border-t border-slate-100 w-full pt-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  {stallNumber ? `STALL ${stallNumber} | COMPANY` : 'COMPANY / FIRM'}
+                </p>
+                <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
+                  {person.company_name || 'Individual'}
+                </p>
               </div>
             </div>
 
-            {/* TIGHTENED INFO STRIP */}
-            <div className="bg-[#0b3d41] text-white flex px-5 py-3 w-full">
+            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full">
               <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-teal-200/60 mb-0.5">Date</p>
-                <p className="text-[9px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                <p className="text-[10px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
               </div>
-              <div className="w-1/2 pl-3 text-left">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-teal-200/60 mb-0.5">Location</p>
-                <p className="text-[8px] font-black uppercase tracking-wide leading-tight">GMDC GROUND,<br/>AHMEDABAD</p>
+              <div className="w-1/2 pl-4 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
+                <p className="text-[9px] font-black uppercase tracking-wide leading-tight">GMDC UNIVERSITY GROUND,<br/>AHMEDABAD</p>
               </div>
             </div>
 
-            {/* TIGHTENED FOOTER */}
-            <div className="bg-slate-50 px-5 py-3 flex items-center justify-center gap-2">
-              <div className="w-6 h-6 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 flex items-center justify-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
                 <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
               </div>
               <div className="text-left">
-                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0">Organized By</p>
-                <p className="text-[9px] font-black text-[#0b3d41] uppercase tracking-wide">SHREE BALAJI EVENT LLP</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-wide">SHREE BALAJI EVENT LLP</p>
               </div>
             </div>
           </Card>
 
-          <div className="w-full mt-5 space-y-3">
+          <div className="w-full mt-6 space-y-3">
             <Button 
                 onClick={() => window.open(`/badge/print?id=${person.id}`, '_blank')}
-                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-100 transition-all text-white text-[11px]"
+                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white"
             >
                 🖨️ Print / Download Pass
             </Button>
@@ -229,7 +210,7 @@ function BadgeDisplay() {
                     setNeedsLookup(true);
                 }}
                 variant="ghost"
-                className="w-full text-slate-400 hover:text-slate-800 font-bold uppercase tracking-widest text-[9px]"
+                className="w-full text-slate-400 hover:text-slate-800 font-bold uppercase tracking-widest text-[10px]"
             >
                 Not your badge? Search again
             </Button>
