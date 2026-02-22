@@ -12,103 +12,104 @@ function InstantPrintContent() {
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
 
-  // THE SILVER BULLET: Converts the heavy SVG into a lightning-fast PNG image
   const handleInstantPrint = () => {
     const svgElement = document.querySelector('#qr-code-wrapper svg') as SVGElement;
     if (!svgElement) return;
 
-    // 1. Serialize the SVG
     const xml = new XMLSerializer().serializeToString(svgElement);
     const svg64 = btoa(unescape(encodeURIComponent(xml)));
     const img = new Image();
 
-    // 2. When the image loads, draw it to a flat canvas (Rasterize)
     img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = img.width || 140;
-        canvas.height = img.height || 140;
+        canvas.width = 140;
+        canvas.height = 140;
         const ctx = canvas.getContext('2d');
         
-        // Add a white background just in case
         if (ctx) {
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
         }
 
-        // 3. Convert to a flat PNG data URL
         const flatPngUrl = canvas.toDataURL('image/png');
         const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
 
-        // 4. Eject to the Print Tab using the flat PNG instead of the SVG
-        const printWindow = window.open('', '_blank', 'width=400,height=700');
-        if (!printWindow) {
-            alert("⚠️ Please allow pop-ups for this site so badges can print instantly!");
-            return;
-        }
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0px';
+        iframe.style.height = '0px';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
 
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Print Pass</title>
-              <style>
-                @page { size: 384px 680px; margin: 0; }
-                body {
-                  margin: 0; padding: 0;
-                  font-family: system-ui, -apple-system, sans-serif;
-                  background: white; color: black;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
-                }
-                .container { width: 384px; height: 680px; position: relative; overflow: hidden; text-align: center; }
-                
-                .qr-box { 
-                    padding: 8px; border: 4px solid black; border-radius: 16px; 
-                    display: inline-block; background: white; margin-top: 150px; 
-                }
-                /* Use the flat PNG image */
-                .qr-box img { display: block; width: 140px; height: 140px; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
+        const iframeDoc = iframe.contentWindow?.document;
+        if (iframeDoc) {
+          iframeDoc.open();
+          
+          // The nested backticks are removed here and replaced with simple string addition
+          iframeDoc.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Print Pass</title>
+                <style>
+                  @page { margin: 0; }
+                  body {
+                    margin: 0;
+                    padding: 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    text-align: center;
+                    background: white;
+                    color: black;
+                  }
+                  .spacer { height: 1.6in; width: 100%; }
+                  .qr-box {
+                    display: inline-block;
+                    padding: 0.1in;
+                    border: 3px solid black;
+                    border-radius: 12px;
+                    background: white;
+                  }
+                  .qr-box img { width: 1.4in; height: 1.4in; display: block; }
+                  .name { font-size: 26pt; font-weight: 900; text-transform: uppercase; margin: 0.15in 0 0 0; line-height: 1; }
+                  .role { font-size: 12pt; font-weight: 900; text-transform: uppercase; margin: 0.05in 0 0 0; letter-spacing: 2px; }
+                  .footer-box { border-top: 1px solid #ccc; width: 3.5in; margin: 0.25in auto 0 auto; padding-top: 0.2in; }
+                  .stall { font-size: 9pt; font-weight: bold; text-transform: uppercase; color: #555; letter-spacing: 1px; margin: 0 0 0.05in 0; }
+                  .company { font-size: 18pt; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1.1; }
+                </style>
+              </head>
+              <body>
+                <div class="spacer"></div>
                 
                 <div class="qr-box">
-                    <img src="${flatPngUrl}" alt="QR Code" />
+                    <img src="${flatPngUrl}" alt="QR" />
                 </div>
 
-                <div style="margin-top: 16px;">
-                    <h2 style="font-size: 30px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1;">${person.full_name}</h2>
-                    <p style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 6px 0 0 0; letter-spacing: 2px;">${role}</p>
-                </div>
+                <h2 class="name">${person.full_name}</h2>
+                <p class="role">${role}</p>
 
-                <div style="padding: 0 24px; margin-top: 20px;">
-                    <div style="border-top: 1px solid #cbd5e1; padding-top: 20px;">
-                        <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; letter-spacing: 1px; margin: 0 0 4px 0;">
-                            ${stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
-                        </p>
-                        <p style="font-size: 20px; font-weight: 900; text-transform: uppercase; color: black; margin: 0; line-height: 1.1;">
-                            ${person.company_name || 'Individual'}
-                        </p>
-                    </div>
+                <div class="footer-box">
+                    <p class="stall">${stallNumber ? 'STALL: ' + stallNumber : 'COMPANY / FIRM'}</p>
+                    <p class="company">${person.company_name || 'Individual'}</p>
                 </div>
-              </div>
+              </body>
+            </html>
+          `);
+          iframeDoc.close();
 
-              <script>
-                // Instantly triggers the print dialog, then closes tab
-                window.onload = function() {
-                    window.print();
-                    window.close();
-                };
-              </script>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
+          setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            
+            setTimeout(() => {
+              if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+              }
+            }, 5000);
+          }, 50);
+        }
     };
 
-    // Trigger the image load
     img.src = 'data:image/svg+xml;base64,' + svg64;
   };
 
@@ -129,7 +130,6 @@ function InstantPrintContent() {
         if (data) {
           setPerson(data)
           setRole(userRole)
-          // Wait 300ms for React to draw the SVG, then rasterize and print!
           setTimeout(handleInstantPrint, 300);
         }
         setLoading(false)
@@ -154,7 +154,6 @@ function InstantPrintContent() {
           🖨️ Re-Print Badge
       </button>
 
-      {/* Visual Preview for the Registration Desk Staff */}
       <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200" style={{ width: '384px', height: '680px' }}>
           <div style={{ width: '100%', height: '100%' }}>
               
@@ -162,8 +161,7 @@ function InstantPrintContent() {
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
                   
-                  {/* The SVG is rendered here ONCE, photographed by our code, and sent to the printer as a PNG */}
-                  <div id="qr-code-wrapper" style={{ padding: '8px', border: '4px solid black', borderRadius: '16px', background: 'white', display: 'inline-block' }}>
+                  <div id="qr-code-wrapper" style={{ padding: '8px', border: '4px solid black', borderRadius: '16px', background: 'white', display: 'inline-block', margin: '0 auto' }}>
                       <QRCode value={person.id} size={140} fgColor="#000000" level="M" />
                   </div>
                   
@@ -180,7 +178,7 @@ function InstantPrintContent() {
               <div style={{ padding: '0 24px', marginTop: '20px', textAlign: 'center' }}>
                   <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '20px' }}>
                       <p style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: '#475569', letterSpacing: '1px', margin: '0 0 4px 0' }}>
-                          {stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
+                          {stallNumber ? 'STALL: ' + stallNumber : 'COMPANY / FIRM'}
                       </p>
                       <p style={{ fontSize: '20px', fontWeight: '900', textTransform: 'uppercase', color: 'black', margin: '0', lineHeight: '1.1' }}>
                           {person.company_name || 'Individual'}
