@@ -12,81 +12,104 @@ function InstantPrintContent() {
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
 
-  // THE SILVER BULLET: Ejects the badge into a completely separate, Next.js-free browser tab
+  // THE SILVER BULLET: Converts the heavy SVG into a lightning-fast PNG image
   const handleInstantPrint = () => {
-    // 1. Grab the raw SVG QR code generated on the screen
-    const qrWrapper = document.getElementById('qr-code-wrapper');
-    const qrSvg = qrWrapper ? qrWrapper.innerHTML : '';
-    const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
+    const svgElement = document.querySelector('#qr-code-wrapper svg') as SVGElement;
+    if (!svgElement) return;
 
-    // 2. Open a completely detached, lightweight popup window
-    const printWindow = window.open('', '_blank', 'width=400,height=700');
-    if (!printWindow) {
-        alert("⚠️ Please allow pop-ups for this site so badges can print instantly!");
-        return;
-    }
+    // 1. Serialize the SVG
+    const xml = new XMLSerializer().serializeToString(svgElement);
+    const svg64 = btoa(unescape(encodeURIComponent(xml)));
+    const img = new Image();
 
-    // 3. Write ONLY the bare-metal HTML required for the printer
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Print Pass</title>
-          <style>
-            @page { size: 384px 680px; margin: 0; }
-            body {
-              margin: 0; padding: 0;
-              font-family: system-ui, -apple-system, sans-serif;
-              background: white; color: black;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .container { width: 384px; height: 680px; position: relative; overflow: hidden; text-align: center; }
-            
-            /* The margin-top exactly skips your pre-printed event logo */
-            .qr-box { 
-                padding: 8px; border: 4px solid black; border-radius: 16px; 
-                display: inline-block; background: white; margin-top: 150px; 
-            }
-            .qr-box svg { display: block; width: 140px; height: 140px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            
-            <div class="qr-box">
-                ${qrSvg}
-            </div>
+    // 2. When the image loads, draw it to a flat canvas (Rasterize)
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 140;
+        canvas.height = img.height || 140;
+        const ctx = canvas.getContext('2d');
+        
+        // Add a white background just in case
+        if (ctx) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        }
 
-            <div style="margin-top: 16px;">
-                <h2 style="font-size: 30px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1;">${person.full_name}</h2>
-                <p style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 6px 0 0 0; letter-spacing: 2px;">${role}</p>
-            </div>
+        // 3. Convert to a flat PNG data URL
+        const flatPngUrl = canvas.toDataURL('image/png');
+        const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
 
-            <div style="padding: 0 24px; margin-top: 20px;">
-                <div style="border-top: 1px solid #cbd5e1; padding-top: 20px;">
-                    <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; letter-spacing: 1px; margin: 0 0 4px 0;">
-                        ${stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
-                    </p>
-                    <p style="font-size: 20px; font-weight: 900; text-transform: uppercase; color: black; margin: 0; line-height: 1.1;">
-                        ${person.company_name || 'Individual'}
-                    </p>
+        // 4. Eject to the Print Tab using the flat PNG instead of the SVG
+        const printWindow = window.open('', '_blank', 'width=400,height=700');
+        if (!printWindow) {
+            alert("⚠️ Please allow pop-ups for this site so badges can print instantly!");
+            return;
+        }
+
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Print Pass</title>
+              <style>
+                @page { size: 384px 680px; margin: 0; }
+                body {
+                  margin: 0; padding: 0;
+                  font-family: system-ui, -apple-system, sans-serif;
+                  background: white; color: black;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                .container { width: 384px; height: 680px; position: relative; overflow: hidden; text-align: center; }
+                
+                .qr-box { 
+                    padding: 8px; border: 4px solid black; border-radius: 16px; 
+                    display: inline-block; background: white; margin-top: 150px; 
+                }
+                /* Use the flat PNG image */
+                .qr-box img { display: block; width: 140px; height: 140px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                
+                <div class="qr-box">
+                    <img src="${flatPngUrl}" alt="QR Code" />
                 </div>
-            </div>
-          </div>
 
-          <script>
-            // Instantly triggers the print dialog when this tiny code loads,
-            // and magically closes the popup tab the second printing is done!
-            window.onload = function() {
-                window.print();
-                window.close();
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+                <div style="margin-top: 16px;">
+                    <h2 style="font-size: 30px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1;">${person.full_name}</h2>
+                    <p style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 6px 0 0 0; letter-spacing: 2px;">${role}</p>
+                </div>
+
+                <div style="padding: 0 24px; margin-top: 20px;">
+                    <div style="border-top: 1px solid #cbd5e1; padding-top: 20px;">
+                        <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; letter-spacing: 1px; margin: 0 0 4px 0;">
+                            ${stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
+                        </p>
+                        <p style="font-size: 20px; font-weight: 900; text-transform: uppercase; color: black; margin: 0; line-height: 1.1;">
+                            ${person.company_name || 'Individual'}
+                        </p>
+                    </div>
+                </div>
+              </div>
+
+              <script>
+                // Instantly triggers the print dialog, then closes tab
+                window.onload = function() {
+                    window.print();
+                    window.close();
+                };
+              </script>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+    };
+
+    // Trigger the image load
+    img.src = 'data:image/svg+xml;base64,' + svg64;
   };
 
   useEffect(() => {
@@ -106,7 +129,7 @@ function InstantPrintContent() {
         if (data) {
           setPerson(data)
           setRole(userRole)
-          // Wait just 300ms for React to draw the QR code to the screen, then eject and print!
+          // Wait 300ms for React to draw the SVG, then rasterize and print!
           setTimeout(handleInstantPrint, 300);
         }
         setLoading(false)
@@ -139,7 +162,7 @@ function InstantPrintContent() {
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
                   
-                  {/* ID added here so the popup code can grab the raw SVG */}
+                  {/* The SVG is rendered here ONCE, photographed by our code, and sent to the printer as a PNG */}
                   <div id="qr-code-wrapper" style={{ padding: '8px', border: '4px solid black', borderRadius: '16px', background: 'white', display: 'inline-block' }}>
                       <QRCode value={person.id} size={140} fgColor="#000000" level="M" />
                   </div>
