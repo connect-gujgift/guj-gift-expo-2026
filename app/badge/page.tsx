@@ -9,22 +9,40 @@ import { Button } from "@/components/ui/button"
 
 function BadgeDisplay() {
   const searchParams = useSearchParams()
-  const id = searchParams.get('id')
+  const urlId = searchParams.get('id')
   const router = useRouter()
   const [person, setPerson] = useState<any>(null)
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (id) {
+    // SMART ID CHECK: Look at the URL first. If it's missing, grab the logged-in session!
+    const resolveId = () => {
+      if (urlId) return urlId;
+      
+      try {
+        const exhibitorSession = localStorage.getItem('activeExhibitor');
+        if (exhibitorSession) return JSON.parse(exhibitorSession).id;
+        
+        const visitorSession = localStorage.getItem('activeVisitor');
+        if (visitorSession) return JSON.parse(visitorSession).id;
+      } catch (error) {
+        console.error("No active session found");
+      }
+      return null;
+    };
+
+    const targetId = resolveId();
+
+    if (targetId) {
       const fetchPerson = async () => {
         // 1. Check Visitors
-        let { data } = await supabase.from('visitors').select('*').eq('id', id).single()
+        let { data } = await supabase.from('visitors').select('*').eq('id', targetId).single()
         let userRole = 'VISITOR'
 
         // 2. Check Exhibitors if not a Visitor
         if (!data) {
-          const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('id', id).single()
+          const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('id', targetId).single()
           if (exhibitorData) {
             data = exhibitorData
             userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
@@ -41,18 +59,17 @@ function BadgeDisplay() {
     } else {
         setLoading(false)
     }
-  }, [id])
+  }, [urlId])
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-widest uppercase text-xs">Loading Digital Pass...</div>
   if (!person) return <div className="min-h-screen flex items-center justify-center text-red-500 font-bold tracking-widest uppercase text-xs">Badge Not Found</div>
 
-  // Robust check for stall number across different column naming conventions
   const stallNumber = person.stall_number || person.stall_no || person.stall || person.Stall || '';
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
-      {/* Top Header Logo to make the screen feel less empty */}
+      {/* Top Header Logo */}
       <div className="w-full max-w-[350px] mb-8 flex justify-center opacity-50">
           <img src="/event-logo.png" alt="GGE 2026" className="h-12 object-contain grayscale" />
       </div>
@@ -60,19 +77,19 @@ function BadgeDisplay() {
       <div className="w-full max-w-[350px] flex flex-col items-center">
         <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-white relative">
           
-          {/* 1. TOP LOGO (Clean White Background) */}
+          {/* 1. TOP LOGO */}
           <div className="bg-white pt-6 pb-4 flex justify-center">
             <img src="/event-logo.png" alt="Guj Gift Expo" className="h-20 object-contain" />
           </div>
 
-          {/* 2. OVERLAPPING PILL (Dynamic Color based on Role) */}
+          {/* 2. OVERLAPPING PILL */}
           <div className="flex justify-center -mt-5 relative z-10">
             <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-4 border-white shadow-sm`}>
               {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
             </div>
           </div>
 
-          {/* 3. MIDDLE BODY (QR, NAME, STALL) */}
+          {/* 3. MIDDLE BODY */}
           <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-5 text-center items-center">
             <div className={`p-2 border-[3px] ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-2xl bg-white inline-block`}>
               <QRCode value={person.id} size={130} fgColor="#0b3d41" level="H" />
