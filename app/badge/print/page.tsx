@@ -12,65 +12,81 @@ function InstantPrintContent() {
   const [role, setRole] = useState<string>('VISITOR')
   const [loading, setLoading] = useState(true)
 
-  // THE MAGIC FUNCTION: Prints from an isolated, instant-loading sandbox
+  // THE SILVER BULLET: Ejects the badge into a completely separate, Next.js-free browser tab
   const handleInstantPrint = () => {
-    const badgeContent = document.getElementById('raw-badge-data');
-    if (!badgeContent) return;
+    // 1. Grab the raw SVG QR code generated on the screen
+    const qrWrapper = document.getElementById('qr-code-wrapper');
+    const qrSvg = qrWrapper ? qrWrapper.innerHTML : '';
+    const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
 
-    // 1. Create the invisible sandbox (iframe)
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-
-    // 2. Write ONLY the pure badge data into the sandbox
-    const iframeDoc = iframe.contentWindow?.document;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Print Pass</title>
-            <style>
-              @page { size: 384px 680px; margin: 0; }
-              body {
-                margin: 0;
-                padding: 0;
-                font-family: system-ui, -apple-system, sans-serif;
-                background: white;
-                color: black;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              /* Ensures the QR SVG stays perfectly crisp */
-              svg { display: block; max-width: 100%; height: auto; }
-            </style>
-          </head>
-          <body>
-            <div style="width: 384px; height: 680px; position: relative; overflow: hidden;">
-              ${badgeContent.innerHTML}
-            </div>
-          </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      // 3. Trigger the printer on this empty sandbox (Instant Load!)
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        
-        // Clean up and delete the sandbox after printing
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 3000);
-      }, 100); // 100ms gives the iframe just enough time to read the HTML
+    // 2. Open a completely detached, lightweight popup window
+    const printWindow = window.open('', '_blank', 'width=400,height=700');
+    if (!printWindow) {
+        alert("⚠️ Please allow pop-ups for this site so badges can print instantly!");
+        return;
     }
+
+    // 3. Write ONLY the bare-metal HTML required for the printer
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Pass</title>
+          <style>
+            @page { size: 384px 680px; margin: 0; }
+            body {
+              margin: 0; padding: 0;
+              font-family: system-ui, -apple-system, sans-serif;
+              background: white; color: black;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .container { width: 384px; height: 680px; position: relative; overflow: hidden; text-align: center; }
+            
+            /* The margin-top exactly skips your pre-printed event logo */
+            .qr-box { 
+                padding: 8px; border: 4px solid black; border-radius: 16px; 
+                display: inline-block; background: white; margin-top: 150px; 
+            }
+            .qr-box svg { display: block; width: 140px; height: 140px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            
+            <div class="qr-box">
+                ${qrSvg}
+            </div>
+
+            <div style="margin-top: 16px;">
+                <h2 style="font-size: 30px; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1;">${person.full_name}</h2>
+                <p style="font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 6px 0 0 0; letter-spacing: 2px;">${role}</p>
+            </div>
+
+            <div style="padding: 0 24px; margin-top: 20px;">
+                <div style="border-top: 1px solid #cbd5e1; padding-top: 20px;">
+                    <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; letter-spacing: 1px; margin: 0 0 4px 0;">
+                        ${stallNumber ? `STALL: ${stallNumber}` : 'COMPANY / FIRM'}
+                    </p>
+                    <p style="font-size: 20px; font-weight: 900; text-transform: uppercase; color: black; margin: 0; line-height: 1.1;">
+                        ${person.company_name || 'Individual'}
+                    </p>
+                </div>
+            </div>
+          </div>
+
+          <script>
+            // Instantly triggers the print dialog when this tiny code loads,
+            // and magically closes the popup tab the second printing is done!
+            window.onload = function() {
+                window.print();
+                window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   useEffect(() => {
@@ -90,13 +106,14 @@ function InstantPrintContent() {
         if (data) {
           setPerson(data)
           setRole(userRole)
-          // Automatically fire the instant print once the data is ready
+          // Wait just 300ms for React to draw the QR code to the screen, then eject and print!
           setTimeout(handleInstantPrint, 300);
         }
         setLoading(false)
       }
       fetchPerson()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   if (loading) return <div className="p-10 text-center font-bold text-slate-500 uppercase tracking-widest mt-20">Loading Pass Data...</div>
@@ -107,7 +124,6 @@ function InstantPrintContent() {
   return (
     <div className="flex flex-col items-center justify-start min-h-screen bg-slate-100 py-12">
       
-      {/* Fallback button for the registration desk just in case auto-print is blocked by the browser */}
       <button 
           onClick={handleInstantPrint}
           className="mb-8 px-10 py-4 bg-[#0b3d41] text-white font-black uppercase tracking-widest rounded-xl shadow-lg hover:bg-slate-800 transition-all"
@@ -115,20 +131,16 @@ function InstantPrintContent() {
           🖨️ Re-Print Badge
       </button>
 
-      {/* This is the visual preview for the desk staff. 
-        It holds the exact data layout that gets copied to the printer. 
-      */}
+      {/* Visual Preview for the Registration Desk Staff */}
       <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200" style={{ width: '384px', height: '680px' }}>
-          
-          <div id="raw-badge-data" style={{ width: '100%', height: '100%' }}>
+          <div style={{ width: '100%', height: '100%' }}>
               
-              {/* EXACT SPACER: Pushes the QR code down past your pre-printed event logo and pill */}
               <div style={{ height: '150px', width: '100%' }}></div>
 
-              {/* QR CODE & NAME SECTION */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 24px' }}>
                   
-                  <div style={{ padding: '8px', border: '4px solid black', borderRadius: '16px', background: 'white', display: 'inline-block' }}>
+                  {/* ID added here so the popup code can grab the raw SVG */}
+                  <div id="qr-code-wrapper" style={{ padding: '8px', border: '4px solid black', borderRadius: '16px', background: 'white', display: 'inline-block' }}>
                       <QRCode value={person.id} size={140} fgColor="#000000" level="M" />
                   </div>
                   
@@ -142,7 +154,6 @@ function InstantPrintContent() {
                   </div>
               </div>
 
-              {/* COMPANY & STALL SECTION */}
               <div style={{ padding: '0 24px', marginTop: '20px', textAlign: 'center' }}>
                   <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '20px' }}>
                       <p style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: '#475569', letterSpacing: '1px', margin: '0 0 4px 0' }}>
@@ -156,7 +167,6 @@ function InstantPrintContent() {
 
           </div>
       </div>
-
     </div>
   )
 }
