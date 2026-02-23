@@ -13,22 +13,38 @@ export default function ExhibitorLeadsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // 1. Authenticate & Fetch Leads
+  // 1. Authenticate & Fetch Leads via Supabase Auth
   useEffect(() => {
-    const sessionData = localStorage.getItem('activeExhibitor')
-    if (!sessionData) {
-      router.push('/dashboard')
-      return
+    const initUser = async () => {
+      // Get the logged-in user from the active Supabase session
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        router.push('/login')
+        return
+      }
+
+      // Fetch exhibitor details using their secure user ID
+      const { data: exhibitorData } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (!exhibitorData) {
+         router.push('/dashboard')
+         return
+      }
+
+      setExhibitor(exhibitorData)
+      fetchLeads(user.id)
     }
 
-    const currentExhibitor = JSON.parse(sessionData)
-    setExhibitor(currentExhibitor)
-    fetchLeads(currentExhibitor.id)
+    initUser()
   }, [router])
 
   const fetchLeads = async (exhibitorId: string) => {
     try {
-      // Fetch leads and join with the visitors table to get their details
       const { data, error: fetchError } = await supabase
         .from('leads')
         .select(`
@@ -59,10 +75,8 @@ export default function ExhibitorLeadsPage() {
   const downloadCSV = () => {
     if (leads.length === 0) return
 
-    // Define the CSV headers
     const headers = ['Scan Date', 'Time', 'Visitor Name', 'Company', 'Phone Number', 'Email', 'City']
     
-    // Map the lead data into rows
     const csvRows = leads.map(lead => {
       const dateObj = new Date(lead.created_at)
       const date = dateObj.toLocaleDateString()
@@ -72,7 +86,7 @@ export default function ExhibitorLeadsPage() {
       return [
         date,
         time,
-        `"${visitor.full_name || 'N/A'}"`, // Quotes prevent issues if names have commas
+        `"${visitor.full_name || 'N/A'}"`,
         `"${visitor.company_name || 'N/A'}"`,
         `"${visitor.phone || 'N/A'}"`,
         `"${visitor.email || 'N/A'}"`,
@@ -80,15 +94,13 @@ export default function ExhibitorLeadsPage() {
       ].join(',')
     })
 
-    // Combine headers and rows
     const csvContent = [headers.join(','), ...csvRows].join('\n')
     
-    // Create a downloadable file link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.setAttribute("href", url)
-    link.setAttribute("download", `${exhibitor.company_name.replace(/\s+/g, '_')}_Leads.csv`)
+    link.setAttribute("download", `${exhibitor?.company_name?.replace(/\s+/g, '_') || 'Exhibitor'}_Leads.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
