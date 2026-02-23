@@ -1,167 +1,167 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { Scanner } from '@yudiel/react-qr-scanner'
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import QRCode from "react-qr-code"
 
-export default function VisitorScannerPage() {
+export default function VisitorPortal() {
   const router = useRouter()
-  const [visitor, setVisitor] = useState<any>(null)
-  
-  // Scanner States
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [recentlyScanned, setRecentlyScanned] = useState<string | null>(null)
+  const [phone, setPhone] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true) // New state to handle initial load
+  const [error, setError] = useState('')
+  const [visitorPass, setVisitorPass] = useState<any>(null)
+  const [showPass, setShowPass] = useState(false)
 
+  // 1. INITIAL SESSION CHECK
   useEffect(() => {
-    const sessionData = localStorage.getItem('activeVisitor')
-    if (!sessionData) {
-      router.push('/visitor') 
-      return
+    const activeVisitor = localStorage.getItem('activeVisitor')
+    if (activeVisitor) {
+      try {
+        setVisitorPass(JSON.parse(activeVisitor))
+      } catch (e) {
+        console.error("Session Corrupted")
+        localStorage.removeItem('activeVisitor')
+      }
     }
-    setVisitor(JSON.parse(sessionData))
-  }, [router])
+    setIsInitializing(false) // Stop showing the loading screen immediately after check
+  }, [])
 
-  const handleScan = async (scannedText: string) => {
-    if (isProcessing || scannedText === recentlyScanned || !visitor) return;
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/-/g, '')
 
-    setIsProcessing(true)
-    setSuccessMessage('')
-    setErrorMessage('')
-
-    try {
-      // 1. SMART CLEAN: Extract the ID just in case the QR code contains a URL or spaces
-      let parsedId = scannedText.trim()
-      if (parsedId.includes('?id=')) {
-        parsedId = parsedId.split('?id=')[1].split('&')[0]
-      } else if (parsedId.includes('/')) {
-        parsedId = parsedId.split('/').pop() || parsedId
-      }
-
-      // 2. Look up the Exhibitor
-      const { data: exhibitor, error: exhibitorError } = await supabase
-        .from('exhibitors')
-        .select('id, company_name, stall_number')
-        .eq('id', parsedId)
-        .single()
-
-      if (exhibitorError) {
-        console.error("Supabase Read Error:", exhibitorError)
-        if (exhibitorError.code === 'PGRST116') throw new Error("Exhibitor not found in system.")
-        throw new Error(`Database Error: ${exhibitorError.message}`)
-      }
-      if (!exhibitor) throw new Error("Invalid QR Code Format.")
-
-      // 3. Save the connection
-      const { error: insertError } = await supabase
-        .from('exhibitor_connections')
-        .insert([{
-          visitor_id: visitor.id,
-          exhibitor_id: exhibitor.id
-        }])
-
-      if (insertError) {
-        console.error("Supabase Save Error:", insertError)
-        if (insertError.code === '23505') { 
-          throw new Error(`You have already saved ${exhibitor.company_name}.`)
-        }
-        throw new Error(`Could not save connection: ${insertError.message}`)
-      }
-
-      // Success!
-      setSuccessMessage(`Saved: ${exhibitor.company_name} (Stall ${exhibitor.stall_number || 'N/A'})`)
-      setRecentlyScanned(scannedText)
-
-      setTimeout(() => {
-        setSuccessMessage('')
-        setRecentlyScanned(null)
-      }, 3000)
-
-    } catch (err: any) {
-      console.error(err)
-      setErrorMessage(err.message || "Failed to process QR code.")
-      
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 4000)
-    } finally {
-      setIsProcessing(false)
+    const { data, error } = await supabase.from('visitors').select('*').eq('phone', cleanPhone).single()
+    
+    if (error || !data) {
+      setError('No pass found for this number. Please register at the desk.')
+    } else {
+      setVisitorPass(data)
+      localStorage.setItem('activeVisitor', JSON.stringify(data))
     }
+    setLoading(false)
   }
 
-  if (!visitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-xs tracking-widest bg-slate-900">Verifying Access...</div>
+  const handleLogout = () => {
+    localStorage.removeItem('activeVisitor')
+    setVisitorPass(null)
+    setPhone('')
+    setShowPass(false)
+  }
+
+  // Loading Screen (Only shows for a fraction of a second)
+  if (isInitializing) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">Verifying Access...</div>
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 font-sans text-white pb-20">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
       
-      <div className="w-full max-w-[400px] mb-6 flex justify-between items-center mt-4">
-          <Button variant="ghost" onClick={() => router.push('/visitor')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-             ← Back to Hub
-          </Button>
-          <div className="text-right">
-              <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest">Visitor Mode</p>
+      {!visitorPass ? (
+        // --- LOGIN VIEW ---
+        <div className="w-full max-w-[400px] animate-in fade-in zoom-in-95 duration-300">
+          <div className="mb-6">
+            <Button variant="ghost" onClick={() => router.push('/login')} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-[#ef6c33]">← Back to Main Hub</Button>
           </div>
-      </div>
-
-      <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-slate-800 relative">
-        <CardHeader className="bg-blue-600 p-6 text-center border-b border-blue-700">
-          <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Exhibitor Scanner</CardTitle>
-          <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mt-1 opacity-80">Point camera at Exhibitor Badge</p>
-        </CardHeader>
-        
-        <CardContent className="p-0 relative">
-          
-          {successMessage && (
-            <div className="absolute inset-0 z-20 bg-green-500/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg">
-                    <span className="text-green-500 text-3xl">✓</span>
+          <Card className="border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
+            <CardHeader className="bg-[#0b3d41] text-white p-8 text-center">
+              <img src="/event-logo.png" alt="GGE 2026" className="h-16 mx-auto mb-4 object-contain" />
+              <CardTitle className="text-xl font-black uppercase tracking-tight italic">Visitor Portal</CardTitle>
+              <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mt-1 opacity-70">Retrieve Digital Pass</p>
+            </CardHeader>
+            <CardContent className="p-8">
+              <form onSubmit={handleSearch} className="space-y-6">
+                {error && <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-600 text-[10px] font-black uppercase leading-tight">{error}</div>}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Registered Phone Number</Label>
+                  <Input type="text" placeholder="Enter 10-digit mobile number" value={phone} onChange={(e) => setPhone(e.target.value)} required className="bg-slate-50 border-0 h-12 font-medium text-center tracking-widest" />
                 </div>
-                <p className="text-white font-black uppercase tracking-widest text-sm leading-relaxed">{successMessage}</p>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div className="absolute inset-0 z-20 bg-red-600/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg">
-                    <span className="text-red-600 text-3xl">✗</span>
-                </div>
-                <p className="text-white font-black uppercase tracking-widest text-[11px] leading-relaxed px-4">{errorMessage}</p>
-            </div>
-          )}
-
-          {isProcessing && !successMessage && !errorMessage && (
-            <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-blue-400 font-black uppercase tracking-widest text-xs">Processing Scan...</p>
-            </div>
-          )}
-
-          <div className="w-full aspect-square bg-black relative overflow-hidden flex items-center justify-center">
-            <Scanner
-                onScan={(detectedCodes) => {
-                    if (detectedCodes && detectedCodes.length > 0) {
-                        handleScan(detectedCodes[0].rawValue);
-                    }
-                }}
-                onError={(error: any) => console.log(error?.message || error)}
-            />
-            
-            <div className="absolute inset-0 pointer-events-none border-[40px] border-slate-900/40"></div>
-            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-blue-500/50 m-10 rounded-3xl"></div>
-          </div>
-          
-        </CardContent>
-        
-        <div className="bg-slate-800 p-6 text-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Scan an exhibitor's pass to instantly save their stall and contact info.
-            </p>
+                <Button type="submit" disabled={loading} className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white">
+                  {loading ? 'Searching...' : 'Access Hub'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-      </Card>
+      ) : !showPass ? (
+        // --- DASHBOARD VIEW ---
+        <div className="w-full max-w-md flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="text-center mb-4">
+            <h1 className="text-3xl font-black uppercase tracking-tighter italic text-[#0b3d41]">Visitor Hub</h1>
+            <div className="flex justify-center items-center gap-2 mt-1">
+               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live System</p>
+            </div>
+          </div>
+
+          <Card className="border-0 shadow-xl bg-[#0b3d41] text-white active:scale-95 transition-all cursor-pointer overflow-hidden relative rounded-[2rem]" onClick={() => setShowPass(true)}>
+            <CardContent className="p-6 flex items-center justify-between">
+              <div className="z-10 text-left">
+                <h2 className="text-xl font-black uppercase italic leading-none">My Entry Pass</h2>
+                <p className="text-[10px] font-bold uppercase text-teal-300 mt-2 tracking-widest">View & Download QR Badge</p>
+              </div>
+              <div className="text-4xl opacity-40">🎫</div>
+              <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-teal-500 rounded-full blur-3xl opacity-20"></div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3 w-full mt-2">
+              <Button onClick={() => router.push('/visitor/scanner')} className="flex-1 bg-blue-600 hover:bg-blue-700 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-100 transition-all text-white text-[10px] flex gap-2 items-center justify-center">
+                  <span className="text-lg">📷</span> Scan Stall
+              </Button>
+              <Button onClick={() => router.push('/visitor/connections')} className="flex-1 bg-white hover:bg-slate-50 text-blue-600 border-2 border-slate-200 h-14 font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all text-[10px] flex gap-2 items-center justify-center">
+                  <span className="text-lg">📋</span> Saved
+              </Button>
+          </div>
+
+          <Button variant="ghost" onClick={handleLogout} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-red-500 mt-6 mx-auto w-fit">← Logout Securely</Button>
+        </div>
+      ) : (
+        // --- QR PASS VIEW ---
+        <div className="w-full max-w-[350px] flex flex-col items-center animate-in zoom-in-95 duration-300">
+          <div className="w-full flex justify-start mb-4">
+             <Button variant="ghost" onClick={() => setShowPass(false)} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-[#0b3d41] bg-white rounded-full px-4 py-1 shadow-sm">← Back to Hub</Button>
+          </div>
+          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white relative">
+            <div className="bg-white pt-8 pb-3 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-16 object-contain" />
+            </div>
+            <div className="flex justify-center -mt-4 relative z-10">
+              <div className="bg-[#ef6c33] text-white px-6 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border-4 border-white shadow-sm">Valued Visitor</div>
+            </div>
+            <div className="px-6 pt-6 pb-6 bg-white flex-col flex gap-4 text-center items-center">
+              <div className="p-2 border-[3px] border-[#ef6c33] rounded-2xl bg-white inline-block">
+                <QRCode value={visitorPass.id} size={130} fgColor="#0b3d41" level="H" />
+              </div>
+              <div className="flex flex-col items-center">
+                <h2 className="text-2xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter">{visitorPass.full_name}</h2>
+                <p className="text-[10px] font-black text-[#ef6c33] uppercase tracking-widest mt-1">Visitor</p>
+              </div>
+              <div className="border-t border-slate-100 w-full pt-4">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Company / Firm</p>
+                <p className="text-lg font-black text-[#0b3d41] uppercase leading-tight">{visitorPass.company_name || 'Individual'}</p>
+              </div>
+            </div>
+            <div className="bg-[#0b3d41] text-white flex px-6 py-4 w-full text-center">
+              <div className="w-1/2 pr-3 border-r border-teal-700/50">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Date</p>
+                <p className="text-[9px] font-black uppercase tracking-widest">12-14 Aug 2026</p>
+              </div>
+              <div className="w-1/2 pl-4">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-teal-200/60 mb-1">Location</p>
+                <p className="text-[9px] font-black uppercase tracking-widest leading-none">GMDC GROUND, AHMEDABAD</p>
+              </div>
+            </div>
+          </Card>
+          <Button onClick={() => window.open(`/badge/print?id=${visitorPass.id}`, '_blank')} className="w-full bg-[#0b3d41] hover:bg-slate-800 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all text-white mt-4">⎙ Save / Print Digital Pass</Button>
+        </div>
+      )}
     </div>
   )
 }

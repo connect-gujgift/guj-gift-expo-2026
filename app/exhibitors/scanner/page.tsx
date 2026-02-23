@@ -17,54 +17,51 @@ export default function LeadScannerPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [recentlyScanned, setRecentlyScanned] = useState<string | null>(null)
 
-  // 1. Authenticate & Fetch Exhibitor via Supabase Auth
   useEffect(() => {
     const initUser = async () => {
-      // Securely get the logged-in user session
       const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
-        router.push('/login')
-        return
-      }
+      if (authError || !user) return router.push('/login')
 
-      // Fetch exhibitor details to verify they have scanner access
       const { data: exhibitorData } = await supabase
         .from('exhibitors')
         .select('*')
         .eq('id', user.id)
         .single()
 
-      if (!exhibitorData) {
-         router.push('/dashboard')
-         return
-      }
-
+      if (!exhibitorData) return router.push('/dashboard')
       setExhibitor(exhibitorData)
     }
-
     initUser()
   }, [router])
 
-  // 2. Handle the QR Code Scan
   const handleScan = async (scannedText: string) => {
-    if (isProcessing || scannedText === recentlyScanned) return;
+    if (isProcessing || scannedText === recentlyScanned || !exhibitor) return;
 
     setIsProcessing(true)
     setSuccessMessage('')
     setErrorMessage('')
 
     try {
+      // SMART PARSE: Handle IDs that might be wrapped in URLs or have spaces
+      let parsedId = scannedText.trim()
+      if (parsedId.includes('?id=')) {
+        parsedId = parsedId.split('?id=')[1].split('&')[0]
+      } else if (parsedId.includes('/')) {
+        parsedId = parsedId.split('/').pop() || parsedId
+      }
+
+      // 1. Find the Visitor
       const { data: visitor, error: visitorError } = await supabase
         .from('visitors')
         .select('id, full_name, company_name')
-        .eq('id', scannedText)
+        .eq('id', parsedId)
         .single()
 
       if (visitorError || !visitor) {
-        throw new Error("Invalid QR Code or Visitor Not Found.")
+        throw new Error("Visitor not found. Ensure you are scanning a valid GGE 2026 badge.")
       }
 
+      // 2. Save the Lead
       const { error: insertError } = await supabase
         .from('leads')
         .insert([{
@@ -73,13 +70,11 @@ export default function LeadScannerPage() {
         }])
 
       if (insertError) {
-        if (insertError.code === '23505') { 
-          throw new Error(`You have already scanned ${visitor.full_name}.`)
-        }
+        if (insertError.code === '23505') throw new Error(`Already scanned: ${visitor.full_name}`)
         throw insertError
       }
 
-      setSuccessMessage(`Successfully captured lead: ${visitor.full_name} from ${visitor.company_name || 'Individual'}`)
+      setSuccessMessage(`CAPTURED: ${visitor.full_name}`)
       setRecentlyScanned(scannedText)
 
       setTimeout(() => {
@@ -88,33 +83,29 @@ export default function LeadScannerPage() {
       }, 3000)
 
     } catch (err: any) {
-      console.error(err)
       setErrorMessage(err.message || "Failed to scan badge.")
-      
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 3000)
+      setTimeout(() => setErrorMessage(''), 4000)
     } finally {
       setIsProcessing(false)
     }
   }
 
-  if (!exhibitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-xs tracking-widest bg-slate-900">Verifying Access...</div>
+  if (!exhibitor) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">Verifying Access...</div>
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 font-sans text-white pb-20">
       
       <div className="w-full max-w-[400px] mb-6 flex justify-between items-center mt-4">
-          <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-             ← Exit Scanner
+          <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full transition-all">
+             ← Back to Hub
           </Button>
           <div className="text-right">
-              <p className="text-[10px] text-teal-300 font-black uppercase tracking-widest">Stall {exhibitor.stall_number}</p>
+              <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest">Stall {exhibitor.stall_number}</p>
           </div>
       </div>
 
-      <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-slate-800 relative">
-        <CardHeader className="bg-[#0b3d41] p-6 text-center border-b border-teal-700">
+      <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2.5rem] bg-slate-800 relative">
+        <CardHeader className="bg-[#0b3d41] p-6 text-center border-b border-teal-800">
           <CardTitle className="text-xl font-black uppercase tracking-tight text-white">Lead Scanner</CardTitle>
           <p className="text-[10px] font-bold text-teal-200 uppercase tracking-widest mt-1 opacity-80">Point camera at Visitor Badge</p>
         </CardHeader>
@@ -122,49 +113,44 @@ export default function LeadScannerPage() {
         <CardContent className="p-0 relative">
           
           {successMessage && (
-            <div className="absolute inset-0 z-20 bg-green-500/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
-                    <span className="text-green-500 text-3xl">✓</span>
+            <div className="absolute inset-0 z-20 bg-green-500/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md animate-in fade-in duration-300">
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-xl">
+                    <span className="text-green-500 text-4xl font-bold">✓</span>
                 </div>
                 <p className="text-white font-black uppercase tracking-widest text-sm leading-relaxed">{successMessage}</p>
             </div>
           )}
 
           {errorMessage && (
-            <div className="absolute inset-0 z-20 bg-red-500/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
-                    <span className="text-red-500 text-3xl">✗</span>
+            <div className="absolute inset-0 z-20 bg-red-600/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md animate-in fade-in duration-300">
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-xl">
+                    <span className="text-red-600 text-4xl font-bold">✗</span>
                 </div>
-                <p className="text-white font-black uppercase tracking-widest text-sm leading-relaxed">{errorMessage}</p>
+                <p className="text-white font-black uppercase tracking-widest text-[11px] leading-relaxed px-4">{errorMessage}</p>
             </div>
           )}
 
           {isProcessing && !successMessage && !errorMessage && (
             <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
                 <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-teal-400 font-black uppercase tracking-widest text-xs">Processing Scan...</p>
+                <p className="text-teal-400 font-black uppercase tracking-widest text-[10px]">Processing...</p>
             </div>
           )}
 
-          <div className="w-full aspect-square bg-black relative overflow-hidden flex items-center justify-center">
+          <div className="w-full aspect-square bg-black relative overflow-hidden">
             <Scanner
-                onScan={(detectedCodes) => {
-                    if (detectedCodes && detectedCodes.length > 0) {
-                        handleScan(detectedCodes[0].rawValue);
-                    }
-                }}
-                onError={(error: any) => console.log(error?.message || error)}
+                onScan={(res) => { if (res && res.length > 0) handleScan(res[0].rawValue) }}
+                onError={(err) => console.log(err)}
             />
-            
-            <div className="absolute inset-0 pointer-events-none border-[40px] border-slate-900/40"></div>
-            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-teal-500/50 m-10 rounded-3xl"></div>
+            <div className="absolute inset-0 pointer-events-none border-[50px] border-slate-900/40"></div>
+            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-teal-500/40 m-12 rounded-3xl animate-pulse"></div>
           </div>
           
         </CardContent>
         
-        <div className="bg-slate-800 p-6 text-center">
+        <div className="bg-slate-800 p-8 text-center">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Scan a visitor's pass to instantly add them to your stall's lead database.
+                Scan visitor passes to build your lead database.
             </p>
         </div>
       </Card>
