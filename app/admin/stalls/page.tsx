@@ -3,275 +3,222 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 
-export default function SuperAdminCommandCenter() {
+export default function StallManagementPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
   const [stalls, setStalls] = useState<any[]>([])
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-
+  const [loading, setLoading] = useState(true)
+  
   // Form State
-  const [newStall, setNewStall] = useState({
-    stall_number: '',
-    company_name: '',
-    badge_limit: 2,
-    is_paid: false
-  })
+  const [stallNumber, setStallNumber] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [isPaid, setIsPaid] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  // 1. Authenticate Super Admin
   useEffect(() => {
-    checkAdminAccess()
+    checkAdmin()
+    fetchStalls()
   }, [])
 
-  const checkAdminAccess = async () => {
+  const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    
-    // Replace this with your exact admin email!
+    // Restricting access to Super Admin only
     if (!user || user.email !== 'maulikshah.13@gmail.com') {
       router.push('/login')
-      return
-    }
-    
-    fetchStalls()
-  }
-
-  // 2. Fetch All Stalls
-  const fetchStalls = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('stalls')
-        .select('*')
-        .order('stall_number', { ascending: true })
-
-      if (error) throw error
-      setStalls(data || [])
-    } catch (err: any) {
-      console.error(err)
-      setError('Failed to load stalls.')
-    } finally {
+    } else {
       setLoading(false)
     }
   }
 
-  // 3. Add a New Stall
+  const fetchStalls = async () => {
+    const { data, error } = await supabase
+      .from('stalls')
+      .select('*')
+      .order('stall_number', { ascending: true })
+    
+    if (!error) setStalls(data || [])
+  }
+
   const handleAddStall = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
+    setSaving(true)
+    
+    const { error } = await supabase
+      .from('stalls')
+      .insert([{ 
+        stall_number: stallNumber.toUpperCase(), 
+        company_name: companyName, 
+        is_paid: isPaid 
+      }])
 
-    const formattedStallNo = newStall.stall_number.trim().toUpperCase()
-
-    try {
-      const { error } = await supabase
-        .from('stalls')
-        .insert([{
-          stall_number: formattedStallNo,
-          company_name: newStall.company_name,
-          badge_limit: newStall.badge_limit,
-          is_paid: newStall.is_paid
-        }])
-
-      if (error) {
-        if (error.code === '23505') throw new Error(`Stall ${formattedStallNo} already exists!`)
-        throw error
-      }
-
-      setSuccess(`Stall ${formattedStallNo} successfully added!`)
-      setNewStall({ stall_number: '', company_name: '', badge_limit: 2, is_paid: false })
-      fetchStalls() // Refresh the list
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Failed to add stall.')
-    }
-  }
-
-  // 4. Toggle Payment Status
-  const togglePaymentStatus = async (stallNumber: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('stalls')
-        .update({ is_paid: !currentStatus })
-        .eq('stall_number', stallNumber)
-
-      if (error) throw error
-      fetchStalls() // Refresh the list to show new status
-    } catch (err: any) {
-      alert("Failed to update payment status: " + err.message)
-    }
-  }
-
-  // 5. Delete Stall
-  const deleteStall = async (stallNumber: string) => {
-    if (!window.confirm(`Are you absolutely sure you want to delete Stall ${stallNumber}? This will prevent exhibitors from generating passes.`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('stalls')
-        .delete()
-        .eq('stall_number', stallNumber)
-
-      if (error) throw error
+    if (error) {
+      alert(error.message)
+    } else {
+      setStallNumber('')
+      setCompanyName('')
+      setIsPaid(false)
       fetchStalls()
-    } catch (err: any) {
-      alert("Failed to delete stall: " + err.message)
     }
+    setSaving(false)
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#0b3d41] font-black uppercase tracking-widest text-xs">Loading Command Center...</div>
+  const togglePaymentStatus = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('stalls')
+      .update({ is_paid: !currentStatus })
+      .eq('id', id)
+    
+    if (!error) fetchStalls()
+  }
+
+  const deleteStall = async (id: string) => {
+    if (!confirm("Remove this stall from registry?")) return
+    const { error } = await supabase.from('stalls').delete().eq('id', id)
+    if (!error) fetchStalls()
+  }
+
+  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm">Loading Stalls...</div>
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans text-slate-900 pb-20">
-      
-      {/* Header */}
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 mt-2 gap-4">
-        <div className="text-center md:text-left">
-          <h1 className="text-3xl font-black uppercase tracking-tighter italic text-[#0b3d41]">
-            Super Admin
-          </h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Stall & Exhibitor Management</p>
-        </div>
+    <div className="min-h-screen bg-slate-100 p-4 pb-20 font-sans text-slate-900">
+      <div className="max-w-6xl mx-auto space-y-6">
         
-        <Button 
-            variant="outline" 
-            onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
-            className="font-bold border-2 border-slate-300 text-xs bg-white text-slate-600 rounded-xl"
-        >
-            LOGOUT SECURELY
-        </Button>
-      </div>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* LEFT COLUMN: Add Stall Form */}
-        <div className="lg:col-span-1">
-            <Card className="border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white sticky top-8">
-                <CardHeader className="bg-[#0b3d41] text-white p-6 text-center">
-                    <CardTitle className="text-xl font-black uppercase tracking-tight">Add New Stall</CardTitle>
-                    <p className="text-[9px] font-bold text-teal-200 uppercase tracking-widest mt-1 opacity-80">Authorize exhibitor passes</p>
-                </CardHeader>
-                
-                <CardContent className="p-6">
-                    <form onSubmit={handleAddStall} className="space-y-5">
-                        
-                        {error && <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-600 text-[10px] font-black uppercase leading-tight">{error}</div>}
-                        {success && <div className="p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-[10px] font-black uppercase leading-tight">{success}</div>}
-
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Stall Number *</Label>
-                            <Input 
-                                required 
-                                value={newStall.stall_number}
-                                onChange={(e) => setNewStall({...newStall, stall_number: e.target.value})}
-                                placeholder="e.g. A-101" 
-                                className="bg-slate-50 border-slate-200 h-12 font-black uppercase text-[#0b3d41]" 
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Company Name *</Label>
-                            <Input 
-                                required 
-                                value={newStall.company_name}
-                                onChange={(e) => setNewStall({...newStall, company_name: e.target.value})}
-                                placeholder="e.g. Shourya Stitch Pvt Ltd" 
-                                className="bg-slate-50 border-slate-200 h-12 font-bold" 
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Pass Limit</Label>
-                                <Input 
-                                    required 
-                                    type="number"
-                                    min="1"
-                                    max="20"
-                                    value={newStall.badge_limit}
-                                    onChange={(e) => setNewStall({...newStall, badge_limit: parseInt(e.target.value)})}
-                                    className="bg-slate-50 border-slate-200 h-12 font-black text-center text-lg text-[#ef6c33]" 
-                                />
-                            </div>
-
-                            <div className="space-y-2 flex flex-col justify-end">
-                                <Button 
-                                    type="button"
-                                    onClick={() => setNewStall({...newStall, is_paid: !newStall.is_paid})}
-                                    className={`h-12 w-full font-black uppercase tracking-widest text-[10px] rounded-xl transition-all ${newStall.is_paid ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-500'}`}
-                                >
-                                    {newStall.is_paid ? '✅ PAID' : '⏳ PENDING'}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <Button 
-                            type="submit" 
-                            className="w-full mt-4 bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white"
-                        >
-                            + Register Stall
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
+        {/* HEADER WITH NAVIGATION */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-teal-600">
+          <div>
+            <h1 className="text-3xl font-black uppercase text-teal-700 tracking-tighter italic leading-none">Stall Registry</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Exhibitor Inventory Management</p>
+          </div>
+          <div className="flex gap-2">
+            {/* NAVIGATION BUTTONS */}
+            <Button 
+              variant="outline" 
+              onClick={() => router.push('/admin')} 
+              className="font-bold border-2 text-[10px] uppercase rounded-xl px-6 bg-white hover:bg-slate-50 transition-all"
+            >
+              ← Back to Admin Hub
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
+              className="font-bold text-[10px] uppercase rounded-xl shadow-md"
+            >
+              Logout
+            </Button>
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: Stalls List */}
-        <div className="lg:col-span-2">
-            <div className="bg-white rounded-[2rem] shadow-xl p-6 min-h-[500px]">
-                <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                    <h2 className="text-xl font-black uppercase tracking-tight text-[#0b3d41]">Active Stalls ({stalls.length})</h2>
+        <div className="grid md:grid-cols-12 gap-6">
+          
+          {/* ADD STALL FORM */}
+          <Card className="md:col-span-4 border-0 shadow-md h-fit rounded-[2rem] overflow-hidden">
+            <CardHeader className="bg-teal-700 text-white p-6">
+              <CardTitle className="text-lg font-black uppercase tracking-tight">Register New Stall</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleAddStall} className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Number</Label>
+                  <Input 
+                    placeholder="e.g. A-101" 
+                    value={stallNumber} 
+                    onChange={(e) => setStallNumber(e.target.value)} 
+                    required 
+                    className="font-black bg-slate-50 border-0" 
+                  />
                 </div>
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Company Name</Label>
+                  <Input 
+                    placeholder="Firm Name" 
+                    value={companyName} 
+                    onChange={(e) => setCompanyName(e.target.value)} 
+                    required 
+                    className="font-medium bg-slate-50 border-0" 
+                  />
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+                  <input 
+                    type="checkbox" 
+                    id="isPaid" 
+                    checked={isPaid} 
+                    onChange={(e) => setIsPaid(e.target.checked)} 
+                    className="w-5 h-5 accent-teal-600"
+                  />
+                  <Label htmlFor="isPaid" className="font-black text-[10px] uppercase cursor-pointer">Mark as Fully Paid</Label>
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="w-full bg-teal-600 hover:bg-teal-700 font-black uppercase tracking-widest py-6 rounded-2xl shadow-lg shadow-teal-100 transition-all"
+                >
+                  {saving ? 'Adding...' : 'Register Stall'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-                {stalls.length === 0 ? (
-                    <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-3xl">
-                        <span className="text-4xl opacity-50 mb-4 block">🎪</span>
-                        <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">No stalls registered yet</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {stalls.map((stall) => (
-                            <div key={stall.stall_number} className="border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow relative overflow-hidden group">
-                                
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="bg-orange-50 text-[#ef6c33] px-3 py-1 rounded-lg font-black text-lg uppercase tracking-tighter border border-orange-100">
-                                        {stall.stall_number}
-                                    </div>
-                                    <button onClick={() => deleteStall(stall.stall_number)} className="text-slate-300 hover:text-red-500 transition-colors">
-                                        🗑️
-                                    </button>
-                                </div>
-                                
-                                <h3 className="font-black text-[#0b3d41] uppercase text-sm leading-tight mb-4 pr-4">
-                                    {stall.company_name}
-                                </h3>
-                                
-                                <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-auto">
-                                    <div className="text-center">
-                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Passes</p>
-                                        <p className="text-sm font-black text-[#0b3d41]">{stall.badge_limit}</p>
-                                    </div>
-                                    
-                                    <Button 
-                                        size="sm"
-                                        onClick={() => togglePaymentStatus(stall.stall_number, stall.is_paid)}
-                                        className={`h-8 px-4 font-black uppercase tracking-widest text-[9px] rounded-lg transition-all ${stall.is_paid ? 'bg-green-100 hover:bg-green-200 text-green-700' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
-                                    >
-                                        {stall.is_paid ? '✅ PAID' : '⚠️ PENDING'}
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+          {/* STALL DIRECTORY */}
+          <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[650px] rounded-[2rem] overflow-hidden">
+            <CardHeader className="bg-white border-b p-6">
+               <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-400">Inventory Status</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10">
+                  <tr>
+                    <th className="p-4 px-6">Stall #</th>
+                    <th className="p-4">Firm Name</th>
+                    <th className="p-4">Payment</th>
+                    <th className="p-4 text-right px-6">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {stalls.map((s) => (
+                    <tr key={s.id} className="hover:bg-white transition-colors bg-white/50">
+                      <td className="p-4 px-6">
+                        <span className="font-black text-teal-700 text-sm">{s.stall_number}</span>
+                      </td>
+                      <td className="p-4 font-bold text-slate-700 uppercase">{s.company_name}</td>
+                      <td className="p-4">
+                        <button 
+                          onClick={() => togglePaymentStatus(s.id, s.is_paid)}
+                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all ${s.is_paid ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
+                        >
+                          {s.is_paid ? 'PAID ✓' : 'UNPAID ✗'}
+                        </button>
+                      </td>
+                      <td className="p-4 text-right px-6">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => deleteStall(s.id)} 
+                          className="h-7 text-slate-300 hover:text-red-500 font-black text-[9px] uppercase px-3"
+                        >
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {stalls.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                        No stalls registered yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
         </div>
-
       </div>
     </div>
   )
