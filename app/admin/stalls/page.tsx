@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 
 export default function StallManagementPage() {
   const router = useRouter()
@@ -17,6 +16,7 @@ export default function StallManagementPage() {
   // Form State
   const [stallNumber, setStallNumber] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [badgeLimit, setBadgeLimit] = useState('5') // NEW: Badge Allotment
   const [isPaid, setIsPaid] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -27,7 +27,6 @@ export default function StallManagementPage() {
 
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    // Restricting access to Super Admin only
     if (!user || user.email !== 'maulikshah.13@gmail.com') {
       router.push('/login')
     } else {
@@ -53,6 +52,7 @@ export default function StallManagementPage() {
       .insert([{ 
         stall_number: stallNumber.toUpperCase(), 
         company_name: companyName, 
+        badge_limit: parseInt(badgeLimit), // Save allotment
         is_paid: isPaid 
       }])
 
@@ -61,6 +61,7 @@ export default function StallManagementPage() {
     } else {
       setStallNumber('')
       setCompanyName('')
+      setBadgeLimit('5')
       setIsPaid(false)
       fetchStalls()
     }
@@ -88,27 +89,17 @@ export default function StallManagementPage() {
     <div className="min-h-screen bg-slate-100 p-4 pb-20 font-sans text-slate-900">
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* HEADER WITH NAVIGATION */}
+        {/* HEADER */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-teal-600">
           <div>
             <h1 className="text-3xl font-black uppercase text-teal-700 tracking-tighter italic leading-none">Stall Registry</h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Exhibitor Inventory Management</p>
           </div>
           <div className="flex gap-2">
-            {/* NAVIGATION BUTTONS */}
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/admin')} 
-              className="font-bold border-2 text-[10px] uppercase rounded-xl px-6 bg-white hover:bg-slate-50 transition-all"
-            >
+            <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-6 bg-white hover:bg-slate-50">
               ← Back to Admin Hub
             </Button>
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} 
-              className="font-bold text-[10px] uppercase rounded-xl shadow-md"
-            >
+            <Button variant="destructive" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold text-[10px] uppercase rounded-xl">
               Logout
             </Button>
           </div>
@@ -116,7 +107,7 @@ export default function StallManagementPage() {
 
         <div className="grid md:grid-cols-12 gap-6">
           
-          {/* ADD STALL FORM */}
+          {/* FORM CARD */}
           <Card className="md:col-span-4 border-0 shadow-md h-fit rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-teal-700 text-white p-6">
               <CardTitle className="text-lg font-black uppercase tracking-tight">Register New Stall</CardTitle>
@@ -125,47 +116,33 @@ export default function StallManagementPage() {
               <form onSubmit={handleAddStall} className="space-y-4">
                 <div className="space-y-1">
                   <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Number</Label>
-                  <Input 
-                    placeholder="e.g. A-101" 
-                    value={stallNumber} 
-                    onChange={(e) => setStallNumber(e.target.value)} 
-                    required 
-                    className="font-black bg-slate-50 border-0" 
-                  />
+                  <Input placeholder="e.g. A-101" value={stallNumber} onChange={(e) => setStallNumber(e.target.value)} required className="font-black bg-slate-50 border-0 uppercase" />
                 </div>
                 <div className="space-y-1">
                   <Label className="font-bold text-[10px] uppercase text-slate-400">Company Name</Label>
-                  <Input 
-                    placeholder="Firm Name" 
-                    value={companyName} 
-                    onChange={(e) => setCompanyName(e.target.value)} 
-                    required 
-                    className="font-medium bg-slate-50 border-0" 
-                  />
+                  <Input placeholder="Firm Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required className="font-medium bg-slate-50 border-0" />
                 </div>
+                
+                {/* NEW BADGE ALLOTMENT FIELD */}
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Badge Allotment</Label>
+                  <Input type="number" value={badgeLimit} onChange={(e) => setBadgeLimit(e.target.value)} required className="font-black bg-slate-50 border-0" />
+                  <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">Number of passes included with this stall</p>
+                </div>
+
                 <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-                  <input 
-                    type="checkbox" 
-                    id="isPaid" 
-                    checked={isPaid} 
-                    onChange={(e) => setIsPaid(e.target.checked)} 
-                    className="w-5 h-5 accent-teal-600"
-                  />
+                  <input type="checkbox" id="isPaid" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} className="w-5 h-5 accent-teal-600" />
                   <Label htmlFor="isPaid" className="font-black text-[10px] uppercase cursor-pointer">Mark as Fully Paid</Label>
                 </div>
-                <Button 
-                  type="submit" 
-                  disabled={saving} 
-                  className="w-full bg-teal-600 hover:bg-teal-700 font-black uppercase tracking-widest py-6 rounded-2xl shadow-lg shadow-teal-100 transition-all"
-                >
-                  {saving ? 'Adding...' : 'Register Stall'}
+                <Button type="submit" disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 font-black uppercase tracking-widest py-6 rounded-2xl shadow-lg transition-all">
+                  {saving ? 'Registering...' : 'Register Stall'}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* STALL DIRECTORY */}
-          <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[650px] rounded-[2rem] overflow-hidden">
+          {/* INVENTORY TABLE CARD */}
+          <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-white border-b p-6">
                <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-400">Inventory Status</CardTitle>
             </CardHeader>
@@ -175,6 +152,7 @@ export default function StallManagementPage() {
                   <tr>
                     <th className="p-4 px-6">Stall #</th>
                     <th className="p-4">Firm Name</th>
+                    <th className="p-4 text-center">Badges</th> {/* NEW COLUMN */}
                     <th className="p-4">Payment</th>
                     <th className="p-4 text-right px-6">Action</th>
                   </tr>
@@ -186,6 +164,9 @@ export default function StallManagementPage() {
                         <span className="font-black text-teal-700 text-sm">{s.stall_number}</span>
                       </td>
                       <td className="p-4 font-bold text-slate-700 uppercase">{s.company_name}</td>
+                      <td className="p-4 text-center">
+                        <span className="bg-slate-100 px-3 py-1 rounded-md font-black text-slate-500">{s.badge_limit || 0}</span>
+                      </td>
                       <td className="p-4">
                         <button 
                           onClick={() => togglePaymentStatus(s.id, s.is_paid)}
@@ -195,24 +176,12 @@ export default function StallManagementPage() {
                         </button>
                       </td>
                       <td className="p-4 text-right px-6">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => deleteStall(s.id)} 
-                          className="h-7 text-slate-300 hover:text-red-500 font-black text-[9px] uppercase px-3"
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => deleteStall(s.id)} className="h-7 text-slate-300 hover:text-red-500 font-black text-[9px] uppercase">
                           Delete
                         </Button>
                       </td>
                     </tr>
                   ))}
-                  {stalls.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-                        No stalls registered yet.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </CardContent>
