@@ -171,12 +171,31 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* SCAN ACTION CARD */}
-      {!scanning && (
-        <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all cursor-pointer ${role === 'exhibitor' ? 'bg-[#ef6c33]' : 'bg-blue-600'}`} onClick={() => setScanning(true)}>
+      {/* --- NEW: EXHIBITOR QUICK ACTIONS --- */}
+      {!scanning && role === 'exhibitor' && (
+        <div className="flex gap-3 mb-4">
+            <Button 
+                onClick={() => router.push('/exhibitor/scanner')}
+                className="flex-1 bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white text-[10px] flex gap-2 items-center justify-center"
+            >
+                <span className="text-lg">📷</span> Scan Lead
+            </Button>
+            
+            <Button 
+                onClick={() => router.push('/exhibitor/leads')}
+                className="flex-1 bg-white hover:bg-slate-50 text-[#0b3d41] border-2 border-slate-200 h-14 font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all text-[10px] flex gap-2 items-center justify-center"
+            >
+                <span className="text-lg">📊</span> View Leads
+            </Button>
+        </div>
+      )}
+
+      {/* EXISTING SCAN ACTION CARD (VISITOR) */}
+      {!scanning && role === 'visitor' && (
+        <Card className={`border-0 shadow-xl mb-4 text-white active:scale-95 transition-all cursor-pointer bg-blue-600`} onClick={() => setScanning(true)}>
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black uppercase italic leading-none text-white">Scan {role === 'exhibitor' ? 'Visitor' : 'Exhibitor'}</h2>
+              <h2 className="text-lg font-black uppercase italic leading-none text-white">Scan Exhibitor</h2>
               <p className="text-[9px] font-bold uppercase opacity-80 mt-1">Tap to open camera</p>
             </div>
             <span className="text-3xl">📷</span>
