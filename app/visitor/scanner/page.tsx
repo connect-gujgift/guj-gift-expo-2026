@@ -11,17 +11,15 @@ export default function VisitorScannerPage() {
   const router = useRouter()
   const [visitor, setVisitor] = useState<any>(null)
   
-  // Scanner States
   const [isProcessing, setIsProcessing] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [recentlyScanned, setRecentlyScanned] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check for the active Visitor session in localStorage
     const sessionData = localStorage.getItem('activeVisitor')
     if (!sessionData) {
-      router.push('/visitor') // Kick them back to login if no session is found
+      router.push('/visitor') 
       return
     }
     setVisitor(JSON.parse(sessionData))
@@ -35,18 +33,21 @@ export default function VisitorScannerPage() {
     setErrorMessage('')
 
     try {
-      // Step A: Look up the Exhibitor by the ID hidden in their QR code
+      let parsedId = scannedText.trim()
+      if (parsedId.includes('?id=')) {
+        parsedId = parsedId.split('?id=')[1].split('&')[0]
+      } else if (parsedId.includes('/')) {
+        parsedId = parsedId.split('/').pop() || parsedId
+      }
+
       const { data: exhibitor, error: exhibitorError } = await supabase
         .from('exhibitors')
         .select('id, company_name, stall_number')
-        .eq('id', scannedText)
+        .eq('id', parsedId)
         .single()
 
-      if (exhibitorError || !exhibitor) {
-        throw new Error("Invalid QR Code or Exhibitor Not Found.")
-      }
+      if (exhibitorError || !exhibitor) throw new Error("Exhibitor not found.")
 
-      // Step B: Save the connection using the secure Visitor ID
       const { error: insertError } = await supabase
         .from('exhibitor_connections')
         .insert([{
@@ -55,14 +56,16 @@ export default function VisitorScannerPage() {
         }])
 
       if (insertError) {
-        if (insertError.code === '23505') { 
-          throw new Error(`You have already saved ${exhibitor.company_name}.`)
+        console.error("Insert Error:", insertError)
+        // If we hit the Foreign Key error again, we'll give a helpful fix
+        if (insertError.code === '23503') {
+           throw new Error("Session Mismatch. Please Logout and Log back in to sync your pass.")
         }
-        throw insertError
+        if (insertError.code === '23505') throw new Error(`Already saved ${exhibitor.company_name}.`)
+        throw new Error(`Save failed: ${insertError.message}`)
       }
 
-      // Step C: Show Success
-      setSuccessMessage(`Saved: ${exhibitor.company_name} (Stall ${exhibitor.stall_number || 'N/A'})`)
+      setSuccessMessage(`Saved: ${exhibitor.company_name}`)
       setRecentlyScanned(scannedText)
 
       setTimeout(() => {
@@ -71,29 +74,20 @@ export default function VisitorScannerPage() {
       }, 3000)
 
     } catch (err: any) {
-      console.error(err)
-      setErrorMessage(err.message || "Failed to scan badge.")
-      
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 3000)
+      setErrorMessage(err.message || "Failed to process scan.")
+      setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setIsProcessing(false)
     }
   }
 
-  if (!visitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-xs tracking-widest bg-slate-900">Verifying Access...</div>
+  if (!visitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-[10px] bg-slate-900">Checking Session...</div>
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 font-sans text-white pb-20">
-      
       <div className="w-full max-w-[400px] mb-6 flex justify-between items-center mt-4">
-          <Button variant="ghost" onClick={() => router.push('/visitor')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-             ← Back to Hub
-          </Button>
-          <div className="text-right">
-              <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest">Visitor Mode</p>
-          </div>
+          <Button variant="ghost" onClick={() => router.push('/visitor')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">← Back to Hub</Button>
+          <div className="text-right"><p className="text-[10px] text-blue-300 font-black uppercase tracking-widest">Visitor Mode</p></div>
       </div>
 
       <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-slate-800 relative">
@@ -103,53 +97,24 @@ export default function VisitorScannerPage() {
         </CardHeader>
         
         <CardContent className="p-0 relative">
-          
           {successMessage && (
-            <div className="absolute inset-0 z-20 bg-green-500/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
-                    <span className="text-green-500 text-3xl">✓</span>
-                </div>
-                <p className="text-white font-black uppercase tracking-widest text-sm leading-relaxed">{successMessage}</p>
+            <div className="absolute inset-0 z-20 bg-green-500/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg"><span className="text-green-500 text-3xl">✓</span></div>
+                <p className="text-white font-black uppercase tracking-widest text-sm">{successMessage}</p>
             </div>
           )}
-
           {errorMessage && (
-            <div className="absolute inset-0 z-20 bg-red-500/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
-                    <span className="text-red-500 text-3xl">✗</span>
-                </div>
-                <p className="text-white font-black uppercase tracking-widest text-sm leading-relaxed">{errorMessage}</p>
+            <div className="absolute inset-0 z-20 bg-red-600/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg"><span className="text-red-600 text-3xl">✗</span></div>
+                <p className="text-white font-black uppercase tracking-widest text-[11px] leading-relaxed px-4">{errorMessage}</p>
             </div>
           )}
-
-          {isProcessing && !successMessage && !errorMessage && (
-            <div className="absolute inset-0 z-20 bg-slate-900/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-blue-400 font-black uppercase tracking-widest text-xs">Processing Scan...</p>
-            </div>
-          )}
-
           <div className="w-full aspect-square bg-black relative overflow-hidden flex items-center justify-center">
-            <Scanner
-                onScan={(detectedCodes) => {
-                    if (detectedCodes && detectedCodes.length > 0) {
-                        handleScan(detectedCodes[0].rawValue);
-                    }
-                }}
-                onError={(error: any) => console.log(error?.message || error)}
-            />
-            
+            <Scanner onScan={(res) => { if (res && res.length > 0) handleScan(res[0].rawValue) }} />
             <div className="absolute inset-0 pointer-events-none border-[40px] border-slate-900/40"></div>
-            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-blue-500/50 m-10 rounded-3xl"></div>
           </div>
-          
         </CardContent>
-        
-        <div className="bg-slate-800 p-6 text-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Scan an exhibitor's pass to instantly save their stall and contact info.
-            </p>
-        </div>
+        <div className="bg-slate-800 p-6 text-center"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Scan exhibitors to save their info.</p></div>
       </Card>
     </div>
   )
