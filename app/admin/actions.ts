@@ -10,10 +10,22 @@ export async function createExhibitorAction(prevState: any, formData: FormData) 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const fullName = formData.get('full_name') as string
-  const company_name = formData.get('company_name') as string
-  const isStaff = formData.get('is_staff') === 'true' // Handle the staff flag
+  const phone = formData.get('phone') as string // NEW: Capture phone
+  const isStaff = formData.get('is_staff') === 'true'
+  
+  // NEW: Logic to extract Stall and Company from the dropdown selection
+  const stallSelection = formData.get('stall_selection') as string
+  let finalCompanyName = formData.get('company_name') as string // Used for Staff
+  let finalStallNumber = ''
+
+  if (!isStaff && stallSelection) {
+    const [stallNo, company] = stallSelection.split('|')
+    finalStallNumber = stallNo
+    finalCompanyName = company
+  }
 
   try {
+    // 1. Create the Auth User securely via Service Role
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -22,23 +34,28 @@ export async function createExhibitorAction(prevState: any, formData: FormData) 
 
     if (authError) return { success: false, message: authError.message }
 
+    // 2. Insert into Exhibitors table with all new fields
     const { error: dbError } = await supabaseAdmin
       .from('exhibitors')
       .insert({
         id: authData.user.id,
         full_name: fullName,
-        company_name: isStaff ? "REGISTRATION TEAM" : company_name,
-        is_staff: isStaff, // Save the role
+        phone: phone, // Saved to DB
+        company_name: isStaff ? (finalCompanyName || "REGISTRATION TEAM") : finalCompanyName,
+        stall_number: finalStallNumber, // Automatically linked
+        is_staff: isStaff,
         email: email
       })
 
     if (dbError) {
+      // Cleanup auth if DB insert fails
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       return { success: false, message: dbError.message }
     }
 
-    return { success: true, message: isStaff ? "Staff Added!" : "Exhibitor Added!" }
+    return { success: true, message: isStaff ? "Staff Added Successfully!" : "Exhibitor Account Created & Linked!" }
+    
   } catch (err: any) {
     return { success: false, message: err.message }
   }
-}   
+}

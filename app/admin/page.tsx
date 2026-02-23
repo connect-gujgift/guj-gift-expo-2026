@@ -19,9 +19,9 @@ export default function AdminPanel() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<any[]>([])
+  const [paidStalls, setPaidStalls] = useState<any[]>([]) // NEW: State for Paid Stalls
   const [visitorCount, setVisitorCount] = useState(0)
   
-  // Tab states for both the Form and the Directory
   const [activeTab, setActiveTab] = useState<'exhibitors' | 'staff'>('exhibitors')
   const [formType, setFormType] = useState<'exhibitor' | 'staff'>('exhibitor')
 
@@ -38,12 +38,23 @@ export default function AdminPanel() {
 
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    if (!user || user.email !== 'maulikshah.13@gmail.com') {
       router.push('/login')
     } else {
       fetchDashboardData()
+      fetchPaidStalls() // NEW: Load paid stalls for the dropdown
       setLoading(false)
     }
+  }
+
+  // NEW: Fetch only firms that have PAID
+  const fetchPaidStalls = async () => {
+    const { data } = await supabase
+      .from('stalls')
+      .select('stall_number, company_name')
+      .eq('is_paid', true)
+      .order('stall_number', { ascending: true })
+    setPaidStalls(data || [])
   }
 
   const fetchDashboardData = async () => {
@@ -71,6 +82,7 @@ export default function AdminPanel() {
     
     const dataToExport = filtered.map(u => ({
       'Name': u.full_name || 'N/A',
+      'Phone': u.phone || 'N/A',
       'Email': u.email || 'N/A',
       'Company/Role': u.company_name || (u.is_staff ? 'Registration Staff' : 'N/A'),
       'Stall': u.stall_number || 'N/A'
@@ -95,9 +107,7 @@ export default function AdminPanel() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Super Admin Access</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {/* NEW: Manage Stalls Button */}
             <Button onClick={() => router.push('/admin/stalls')} className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] uppercase px-4 rounded-xl shadow-md border-2 border-teal-500">Manage Stalls 🎪</Button>
-            
             <Button onClick={() => router.push('/admin/registration-desk')} className="bg-blue-600 hover:bg-blue-700 font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Desk 🖨️</Button>
             <Button onClick={() => router.push('/admin/analytics')} className="bg-[#ef6c33] hover:bg-[#d45a27] font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Analytics 📈</Button>
             <Button onClick={() => router.push('/admin/visitor-log')} className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4 rounded-xl">Logs 📊</Button>
@@ -149,7 +159,6 @@ export default function AdminPanel() {
             <CardContent className="p-6">
               <form action={formAction} className="space-y-4">
                 
-                {/* Hidden input to tell the server action which role we are creating */}
                 <input type="hidden" name="is_staff" value={formType === 'staff' ? 'true' : 'false'} />
 
                 <div className="space-y-1">
@@ -157,17 +166,30 @@ export default function AdminPanel() {
                   <Input name="full_name" placeholder="Person's Name" className="font-medium bg-slate-50 border-0" required />
                 </div>
 
-                {/* Conditional Fields based on selection */}
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Phone Number</Label>
+                  <Input name="phone" placeholder="10-digit Mobile" className="font-medium bg-slate-50 border-0" required />
+                </div>
+
+                {/* Conditional Fields: Dropdown for Exhibitors, Text for Staff */}
                 {formType === 'exhibitor' ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label className="font-bold text-[10px] uppercase text-slate-400">Company Name</Label>
-                      <Input name="company_name" placeholder="Firm Name" className="font-medium bg-slate-50 border-0" required />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Number</Label>
-                      <Input name="stall_number" placeholder="e.g. A-101" className="font-medium bg-slate-50 border-0" required />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Select Paid Stall/Firm</Label>
+                    <select 
+                      name="stall_selection" 
+                      required 
+                      className="w-full h-12 bg-slate-50 border-0 rounded-md px-3 font-medium text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    >
+                      <option value="">-- Select a Paid Firm --</option>
+                      {paidStalls.map(s => (
+                        <option key={s.stall_number} value={`${s.stall_number}|${s.company_name}`}>
+                          [{s.stall_number}] {s.company_name}
+                        </option>
+                      ))}
+                    </select>
+                    {paidStalls.length === 0 && (
+                      <p className="text-[9px] text-red-500 font-bold uppercase mt-1">No firms are marked as PAID yet.</p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -188,6 +210,7 @@ export default function AdminPanel() {
 
                 <Button 
                   type="submit" 
+                  disabled={formType === 'exhibitor' && paidStalls.length === 0}
                   className={`w-full font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg ${formType === 'staff' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' : 'bg-[#ef6c33] hover:bg-[#d45a27] shadow-orange-100'}`}
                 >
                   Create {formType === 'staff' ? 'Staff' : 'Exhibitor'} Account
@@ -197,7 +220,7 @@ export default function AdminPanel() {
           </Card>
 
           {/* TABS DIRECTORY */}
-          <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[650px]">
+          <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[700px]">
             <CardHeader className="bg-white border-b py-2 px-6">
               <div className="flex justify-between items-center">
                 <div className="flex border-b">
@@ -231,7 +254,7 @@ export default function AdminPanel() {
                     <tr key={u.id} className="hover:bg-white transition-colors bg-white/50">
                       <td className="p-4 px-6">
                         <p className="font-black text-slate-900 uppercase leading-none">{u.full_name || 'No Name'}</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.email}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.email} {u.phone && `• ${u.phone}`}</p>
                       </td>
                       <td className="p-4 hidden sm:table-cell">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${activeTab === 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-[#0b3d41] text-white'}`}>
