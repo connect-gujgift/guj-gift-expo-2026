@@ -16,7 +16,6 @@ export default function ExhibitorLeadsPage() {
   // 1. Authenticate & Fetch Leads via Supabase Auth
   useEffect(() => {
     const initUser = async () => {
-      // Get the logged-in user from the active Supabase session
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError || !user) {
@@ -24,7 +23,6 @@ export default function ExhibitorLeadsPage() {
         return
       }
 
-      // Fetch exhibitor details using their secure user ID
       const { data: exhibitorData } = await supabase
         .from('exhibitors')
         .select('*')
@@ -45,27 +43,25 @@ export default function ExhibitorLeadsPage() {
 
   const fetchLeads = async (exhibitorId: string) => {
     try {
+      // FIX: Changed to visitors(*) to prevent crashes if columns like 'city' don't exist
       const { data, error: fetchError } = await supabase
         .from('leads')
         .select(`
           created_at,
-          visitors (
-            full_name,
-            company_name,
-            phone,
-            email,
-            city
-          )
+          visitors (*)
         `)
         .eq('exhibitor_id', exhibitorId)
         .order('created_at', { ascending: false })
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        console.error("Supabase Error Details:", fetchError)
+        throw fetchError
+      }
 
       setLeads(data || [])
     } catch (err: any) {
       console.error('Error fetching leads:', err)
-      setError('Failed to load leads. Please try again.')
+      setError('FAILED TO LOAD LEADS. PLEASE TRY AGAIN.')
     } finally {
       setLoading(false)
     }

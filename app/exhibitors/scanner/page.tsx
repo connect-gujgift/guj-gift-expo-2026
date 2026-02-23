@@ -17,15 +17,36 @@ export default function LeadScannerPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [recentlyScanned, setRecentlyScanned] = useState<string | null>(null)
 
+  // 1. Authenticate & Fetch Exhibitor via Supabase Auth
   useEffect(() => {
-    const sessionData = localStorage.getItem('activeExhibitor')
-    if (sessionData) {
-      setExhibitor(JSON.parse(sessionData))
-    } else {
-      router.push('/dashboard')
+    const initUser = async () => {
+      // Securely get the logged-in user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        router.push('/login')
+        return
+      }
+
+      // Fetch exhibitor details to verify they have scanner access
+      const { data: exhibitorData } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (!exhibitorData) {
+         router.push('/dashboard')
+         return
+      }
+
+      setExhibitor(exhibitorData)
     }
+
+    initUser()
   }, [router])
 
+  // 2. Handle the QR Code Scan
   const handleScan = async (scannedText: string) => {
     if (isProcessing || scannedText === recentlyScanned) return;
 
@@ -78,7 +99,7 @@ export default function LeadScannerPage() {
     }
   }
 
-  if (!exhibitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-xs tracking-widest">Verifying Access...</div>
+  if (!exhibitor) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold uppercase text-xs tracking-widest bg-slate-900">Verifying Access...</div>
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 font-sans text-white pb-20">
