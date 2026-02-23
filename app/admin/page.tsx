@@ -19,7 +19,8 @@ export default function AdminPanel() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<any[]>([])
-  const [paidStalls, setPaidStalls] = useState<any[]>([]) // NEW: State for Paid Stalls
+  const [stalls, setStalls] = useState<any[]>([]) // Fetching all stalls for quota check
+  const [paidStalls, setPaidStalls] = useState<any[]>([])
   const [visitorCount, setVisitorCount] = useState(0)
   
   const [activeTab, setActiveTab] = useState<'exhibitors' | 'staff'>('exhibitors')
@@ -42,32 +43,35 @@ export default function AdminPanel() {
       router.push('/login')
     } else {
       fetchDashboardData()
-      fetchPaidStalls() // NEW: Load paid stalls for the dropdown
       setLoading(false)
     }
   }
 
-  // NEW: Fetch only firms that have PAID
-  const fetchPaidStalls = async () => {
-    const { data } = await supabase
-      .from('stalls')
-      .select('stall_number, company_name')
-      .eq('is_paid', true)
-      .order('stall_number', { ascending: true })
-    setPaidStalls(data || [])
-  }
-
   const fetchDashboardData = async () => {
+    // 1. Fetch Stalls for Quota logic
+    const { data: stallData } = await supabase.from('stalls').select('*')
+    setStalls(stallData || [])
+    setPaidStalls(stallData?.filter(s => s.is_paid) || [])
+
+    // 2. Fetch Users
     const { data: userData } = await supabase
         .from('exhibitors')
         .select('*')
         .order('created_at', { ascending: false })
     setUsers(userData || [])
 
+    // 3. Fetch Visitors
     const { count: visCount } = await supabase
         .from('visitors')
         .select('*', { count: 'exact', head: true })
     setVisitorCount(visCount || 0)
+  }
+
+  // Helper: Count badges used per stall
+  const getBadgeUsage = (stallNo: string) => {
+    const used = users.filter(u => u.stall_number === stallNo).length
+    const allotted = stalls.find(s => s.stall_number === stallNo)?.badge_limit || 0
+    return { used, allotted }
   }
 
   const deleteUser = async (id: string) => {
@@ -110,167 +114,140 @@ export default function AdminPanel() {
             <Button onClick={() => router.push('/admin/stalls')} className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] uppercase px-4 rounded-xl shadow-md border-2 border-teal-500">Manage Stalls 🎪</Button>
             <Button onClick={() => router.push('/admin/registration-desk')} className="bg-blue-600 hover:bg-blue-700 font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Desk 🖨️</Button>
             <Button onClick={() => router.push('/admin/analytics')} className="bg-[#ef6c33] hover:bg-[#d45a27] font-bold text-[10px] uppercase px-4 rounded-xl shadow-md">Analytics 📈</Button>
-            <Button onClick={() => router.push('/admin/visitor-log')} className="bg-[#0b3d41] hover:bg-slate-800 font-bold text-[10px] uppercase px-4 rounded-xl">Logs 📊</Button>
             <Button variant="outline" className="font-bold border-2 text-[10px] uppercase rounded-xl" onClick={() => router.push('/dashboard')}>Exit</Button>
           </div>
         </div>
 
-        {/* STATS */}
+        {/* STATS WITH BADGE TRACKER */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-[#0b3d41] text-white border-0 shadow-md">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-blue-200">Exhibitors</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-blue-200">Exhibitor Badges</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{users.filter(u => !u.is_staff).length}</p>
+                    <p className="text-[8px] font-bold uppercase mt-2 text-teal-300">Total Issued Personnel</p>
                 </CardContent>
             </Card>
             <Card className="bg-blue-500 text-white border-0 shadow-md">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Staff Members</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Staff</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{users.filter(u => u.is_staff).length}</p>
+                    <p className="text-[8px] font-bold uppercase mt-2">Active Admin Team</p>
                 </CardContent>
             </Card>
             <Card className="bg-[#ef6c33] text-white border-0 shadow-md col-span-2">
                 <CardContent className="p-6">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-orange-100">Total Visitors</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 text-orange-100">Visitor Count</p>
                     <p className="text-4xl font-black tracking-tighter mt-1">{visitorCount}</p>
+                    <p className="text-[8px] font-bold uppercase mt-2">Registered Footfall</p>
                 </CardContent>
             </Card>
         </div>
 
         <div className="grid md:grid-cols-12 gap-6">
           
-          {/* DYNAMIC ONBOARDING FORM */}
-          <Card className="md:col-span-5 border-0 shadow-md h-fit overflow-hidden">
+          {/* FORM */}
+          <Card className="md:col-span-4 border-0 shadow-md h-fit overflow-hidden rounded-[2rem]">
             <div className="flex bg-slate-900 text-white">
-              <button 
-                onClick={() => setFormType('exhibitor')}
-                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${formType === 'exhibitor' ? 'bg-[#ef6c33]' : 'hover:bg-slate-800'}`}
-              >
-                + Add Exhibitor
-              </button>
-              <button 
-                onClick={() => setFormType('staff')}
-                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${formType === 'staff' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}
-              >
-                + Add Staff
-              </button>
+              <button onClick={() => setFormType('exhibitor')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-colors ${formType === 'exhibitor' ? 'bg-[#ef6c33]' : 'hover:bg-slate-800'}`}>+ Exhibitor</button>
+              <button onClick={() => setFormType('staff')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-colors ${formType === 'staff' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>+ Staff</button>
             </div>
-            
             <CardContent className="p-6">
               <form action={formAction} className="space-y-4">
-                
                 <input type="hidden" name="is_staff" value={formType === 'staff' ? 'true' : 'false'} />
-
                 <div className="space-y-1">
                   <Label className="font-bold text-[10px] uppercase text-slate-400">Full Name</Label>
                   <Input name="full_name" placeholder="Person's Name" className="font-medium bg-slate-50 border-0" required />
                 </div>
-
                 <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Phone Number</Label>
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Phone</Label>
                   <Input name="phone" placeholder="10-digit Mobile" className="font-medium bg-slate-50 border-0" required />
                 </div>
 
-                {/* Conditional Fields: Dropdown for Exhibitors, Text for Staff */}
                 {formType === 'exhibitor' ? (
                   <div className="space-y-1">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400">Select Paid Stall/Firm</Label>
-                    <select 
-                      name="stall_selection" 
-                      required 
-                      className="w-full h-12 bg-slate-50 border-0 rounded-md px-3 font-medium text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                    >
-                      <option value="">-- Select a Paid Firm --</option>
-                      {paidStalls.map(s => (
-                        <option key={s.stall_number} value={`${s.stall_number}|${s.company_name}`}>
-                          [{s.stall_number}] {s.company_name}
-                        </option>
-                      ))}
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Link to Paid Stall</Label>
+                    <select name="stall_selection" required className="w-full h-12 bg-slate-50 border-0 rounded-md px-3 font-medium text-sm outline-none">
+                      <option value="">-- Choose Firm --</option>
+                      {paidStalls.map(s => {
+                        const usage = getBadgeUsage(s.stall_number);
+                        const isFull = usage.used >= usage.allotted;
+                        return (
+                          <option key={s.stall_number} value={`${s.stall_number}|${s.company_name}`} disabled={isFull}>
+                            [{s.stall_number}] {s.company_name} ({usage.used}/{usage.allotted} Badges)
+                          </option>
+                        )
+                      })}
                     </select>
-                    {paidStalls.length === 0 && (
-                      <p className="text-[9px] text-red-500 font-bold uppercase mt-1">No firms are marked as PAID yet.</p>
-                    )}
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400">Assigned Role / Dept</Label>
-                    <Input name="company_name" placeholder="e.g. Registration Desk" className="font-medium bg-slate-50 border-0" required />
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Role</Label>
+                    <Input name="company_name" placeholder="Registration Desk" className="font-medium bg-slate-50 border-0" required />
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Login Email</Label>
-                  <Input name="email" type="email" placeholder="user@email.com" className="font-medium bg-slate-50 border-0" required />
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Password</Label>
-                  <Input name="password" type="text" defaultValue="Expo@2026" className="font-medium bg-slate-50 border-0" required />
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Email & Password</Label>
+                  <Input name="email" type="email" placeholder="user@email.com" className="bg-slate-50 border-0 mb-2" required />
+                  <Input name="password" type="text" defaultValue="Expo@2026" className="bg-slate-50 border-0" required />
                 </div>
 
-                <Button 
-                  type="submit" 
-                  disabled={formType === 'exhibitor' && paidStalls.length === 0}
-                  className={`w-full font-black uppercase tracking-widest mt-4 py-7 rounded-2xl shadow-lg ${formType === 'staff' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' : 'bg-[#ef6c33] hover:bg-[#d45a27] shadow-orange-100'}`}
-                >
-                  Create {formType === 'staff' ? 'Staff' : 'Exhibitor'} Account
-                </Button>
+                <Button type="submit" className={`w-full font-black uppercase tracking-widest mt-4 py-6 rounded-2xl shadow-lg ${formType === 'staff' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' : 'bg-[#ef6c33] hover:bg-[#d45a27] shadow-orange-100'}`}>Create Account</Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* TABS DIRECTORY */}
-          <Card className="md:col-span-7 border-0 shadow-md flex flex-col h-[700px]">
+          {/* DIRECTORY TABLE */}
+          <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-white border-b py-2 px-6">
               <div className="flex justify-between items-center">
                 <div className="flex border-b">
-                   <button 
-                     onClick={() => setActiveTab('exhibitors')}
-                     className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'exhibitors' ? 'border-[#ef6c33] text-[#ef6c33]' : 'border-transparent text-slate-400'}`}
-                   >
-                     Exhibitors ({users.filter(u => !u.is_staff).length})
-                   </button>
-                   <button 
-                     onClick={() => setActiveTab('staff')}
-                     className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'staff' ? 'border-blue-500 text-blue-500' : 'border-transparent text-slate-400'}`}
-                   >
-                     Staff ({users.filter(u => u.is_staff).length})
-                   </button>
+                   <button onClick={() => setActiveTab('exhibitors')} className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'exhibitors' ? 'border-[#ef6c33] text-[#ef6c33]' : 'border-transparent text-slate-400'}`}>Exhibitors</button>
+                   <button onClick={() => setActiveTab('staff')} className={`py-4 px-4 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'staff' ? 'border-blue-500 text-blue-500' : 'border-transparent text-slate-400'}`}>Staff</button>
                 </div>
                 <Button size="sm" variant="ghost" className="font-bold text-[10px] uppercase text-slate-400" onClick={exportList}>Export Excel</Button>
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10 shadow-sm">
+                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10">
                   <tr>
-                    <th className="p-4 px-6">{activeTab === 'staff' ? 'Staff Name' : 'Exhibitor Name'}</th>
-                    <th className="p-4 hidden sm:table-cell">{activeTab === 'staff' ? 'Role' : 'Stall'}</th>
-                    <th className="p-4 text-right px-6">Control</th>
+                    <th className="p-4 px-6">Name & Mobile</th>
+                    <th className="p-4">Stall / Badges</th> {/* NEW BADGE INFO */}
+                    <th className="p-4 text-right px-6">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {users.filter(u => activeTab === 'staff' ? u.is_staff : !u.is_staff).map((u) => (
-                    <tr key={u.id} className="hover:bg-white transition-colors bg-white/50">
-                      <td className="p-4 px-6">
-                        <p className="font-black text-slate-900 uppercase leading-none">{u.full_name || 'No Name'}</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.email} {u.phone && `• ${u.phone}`}</p>
-                      </td>
-                      <td className="p-4 hidden sm:table-cell">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${activeTab === 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-[#0b3d41] text-white'}`}>
-                          {activeTab === 'staff' ? (u.company_name || 'Registration Team') : (u.stall_number || 'TBD')}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right px-6">
-                        <Button variant="destructive" size="sm" onClick={() => deleteUser(u.id)} className="h-7 text-[9px] font-black px-3 rounded-lg">REMOVE</Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {users.filter(u => activeTab === 'staff' ? u.is_staff : !u.is_staff).map((u) => {
+                    const usage = getBadgeUsage(u.stall_number);
+                    return (
+                      <tr key={u.id} className="hover:bg-white transition-colors bg-white/50">
+                        <td className="p-4 px-6">
+                          <p className="font-black text-slate-900 uppercase leading-none">{u.full_name}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.phone} • {u.email}</p>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                             <span className={`w-fit px-3 py-1 rounded-full text-[9px] font-black uppercase ${activeTab === 'staff' ? 'bg-blue-100 text-blue-600' : 'bg-[#0b3d41] text-white'}`}>
+                               {activeTab === 'staff' ? u.company_name : u.stall_number}
+                             </span>
+                             {!u.is_staff && (
+                               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                 Stall Quota: {usage.used}/{usage.allotted} Badges
+                               </p>
+                             )}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right px-6">
+                          <Button variant="destructive" size="sm" onClick={() => deleteUser(u.id)} className="h-7 text-[9px] font-black px-3 rounded-lg">REMOVE</Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </CardContent>
           </Card>
-
         </div>
       </div>
     </div>
