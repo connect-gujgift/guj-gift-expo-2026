@@ -73,8 +73,7 @@ export default function GlobalLoginHub() {
   if (!selectedRole) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
-        <div className="w-full max-w-2xl text-center space-y-6">
-          <img src="/event-logo.png" alt="GGE 2026" className="h-20 mx-auto object-contain drop-shadow-md" />
+        <div className="w-full max-w-2xl text-center space-y-6 mt-4">
           
           <div>
             <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic">Global Access Hub</h1>
