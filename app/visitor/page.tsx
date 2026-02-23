@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,24 +16,57 @@ export default function VisitorPortal() {
   const [error, setError] = useState('')
   const [visitorPass, setVisitorPass] = useState<any>(null)
 
+  // Auto-load pass if they already logged in recently on this device
+  useEffect(() => {
+    const activeVisitor = localStorage.getItem('activeVisitor')
+    if (activeVisitor) {
+      setVisitorPass(JSON.parse(activeVisitor))
+    }
+  }, [])
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { data, error } = await supabase.from('visitors').select('*').eq('phone', phone).single()
+    
+    // Clean the phone input just in case they added spaces or dashes
+    const cleanPhone = phone.replace(/\s+/g, '').replace(/-/g, '')
+
+    const { data, error } = await supabase.from('visitors').select('*').eq('phone', cleanPhone).single()
+    
     if (error || !data) {
       setError('No pass found for this number. Please register at the desk.')
     } else {
       setVisitorPass(data)
+      // Save their session so the Scanner and Connections pages know who they are!
+      localStorage.setItem('activeVisitor', JSON.stringify(data))
     }
     setLoading(false)
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('activeVisitor')
+    setVisitorPass(null)
+    setPhone('')
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
-      <div className="w-full max-w-[400px] mb-6">
-        <Button variant="ghost" onClick={() => router.push('/login')} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-[#ef6c33]">← Back to Main Hub</Button>
-      </div>
+      
+      {!visitorPass && (
+        <div className="w-full max-w-[400px] mb-6">
+          <Button variant="ghost" onClick={() => router.push('/login')} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-[#ef6c33]">← Back to Main Hub</Button>
+        </div>
+      )}
+
+      {visitorPass && (
+        <div className="w-full max-w-[400px] mb-6 flex justify-between items-center mt-4">
+           <Button variant="ghost" onClick={handleLogout} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-red-500">
+             ← Logout
+           </Button>
+           <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Visitor Hub</p>
+        </div>
+      )}
 
       {!visitorPass ? (
         <Card className="w-full max-w-[400px] border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white">
@@ -56,12 +89,11 @@ export default function VisitorPortal() {
           </CardContent>
         </Card>
       ) : (
-        /* CONDENSED DIGITAL PASS DISPLAY */
-        <div className="w-full max-w-[350px] flex flex-col items-center">
+        /* VISITOR HUB (PASS + QUICK ACTIONS) */
+        <div className="w-full max-w-[350px] flex flex-col items-center gap-4">
+          
           <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[2rem] bg-white relative">
-            <Button variant="ghost" className="absolute top-3 right-3 z-20 text-slate-400 hover:text-slate-800" onClick={() => setVisitorPass(null)}>✕</Button>
-            
-            <div className="bg-white pt-4 pb-3 flex justify-center">
+            <div className="bg-white pt-4 pb-3 flex justify-center mt-4">
               <img src="/event-logo.png" alt="Guj Gift Expo" className="h-16 object-contain" />
             </div>
 
@@ -95,18 +127,34 @@ export default function VisitorPortal() {
             </div>
 
             <div className="bg-slate-50 px-6 py-3 flex flex-col items-center justify-center gap-1.5">
-              <div className="w-6 h-6 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
-                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
-              </div>
               <div className="text-center">
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
                 <p className="text-[9px] font-black text-[#0b3d41] uppercase tracking-wide">Shree Balaji Event LLP</p>
               </div>
             </div>
           </Card>
-          <div className="w-full mt-6">
-              <Button onClick={() => window.open(`/badge/print?id=${visitorPass.id}`, '_blank')} className="w-full bg-[#0b3d41] hover:bg-slate-800 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all text-white">Save / Print Digital Pass</Button>
+
+          {/* NEW QUICK ACTIONS ROW */}
+          <div className="flex gap-3 w-full mt-2">
+              <Button 
+                  onClick={() => router.push('/visitor/scanner')}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-100 transition-all text-white text-[10px] flex gap-2 items-center justify-center"
+              >
+                  <span className="text-lg">📷</span> Scan Stall
+              </Button>
+              
+              <Button 
+                  onClick={() => router.push('/visitor/connections')}
+                  className="flex-1 bg-white hover:bg-slate-50 text-blue-600 border-2 border-slate-200 h-14 font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all text-[10px] flex gap-2 items-center justify-center"
+              >
+                  <span className="text-lg">📋</span> Saved
+              </Button>
           </div>
+          
+          <Button onClick={() => window.open(`/badge/print?id=${visitorPass.id}`, '_blank')} variant="ghost" className="w-full text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-2 hover:text-[#0b3d41]">
+             ⎙ Print Full Page Badge
+          </Button>
+
         </div>
       )}
     </div>
