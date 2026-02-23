@@ -13,6 +13,10 @@ export default function ExhibitorLeadsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Note editing states
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [noteText, setNoteText] = useState('')
+
   // 1. Authenticate & Fetch Leads via Supabase Auth
   useEffect(() => {
     const initUser = async () => {
@@ -43,10 +47,12 @@ export default function ExhibitorLeadsPage() {
 
   const fetchLeads = async (exhibitorId: string) => {
     try {
-      // FIX: Changed to visitors(*) to prevent crashes if columns like 'city' don't exist
+      // Added 'id' and 'notes' to the query!
       const { data, error: fetchError } = await supabase
         .from('leads')
         .select(`
+          id,
+          notes,
           created_at,
           visitors (*)
         `)
@@ -67,11 +73,29 @@ export default function ExhibitorLeadsPage() {
     }
   }
 
+  // Save Note Function
+  const saveNote = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ notes: noteText })
+        .eq('id', id)
+
+      if (error) throw error
+      
+      setEditingId(null)
+      fetchLeads(exhibitor.id) // Refresh data to show new note
+    } catch (err: any) {
+      alert("Error saving note: " + err.message)
+    }
+  }
+
   // 2. Export to CSV (Excel) Function
   const downloadCSV = () => {
     if (leads.length === 0) return
 
-    const headers = ['Scan Date', 'Time', 'Visitor Name', 'Company', 'Phone Number', 'Email', 'City']
+    // Added 'Notes' to the headers
+    const headers = ['Scan Date', 'Time', 'Visitor Name', 'Company', 'Phone Number', 'Email', 'City', 'Notes']
     
     const csvRows = leads.map(lead => {
       const dateObj = new Date(lead.created_at)
@@ -86,7 +110,8 @@ export default function ExhibitorLeadsPage() {
         `"${visitor.company_name || 'N/A'}"`,
         `"${visitor.phone || 'N/A'}"`,
         `"${visitor.email || 'N/A'}"`,
-        `"${visitor.city || 'N/A'}"`
+        `"${visitor.city || 'N/A'}"`,
+        `"${lead.notes || ''}"` // Added notes to the export row
       ].join(',')
     })
 
@@ -154,29 +179,63 @@ export default function ExhibitorLeadsPage() {
               const visitor = lead.visitors || {}
               return (
                 <Card key={index} className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <div>
-                      <h3 className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
-                        {visitor.full_name || 'Unknown Visitor'}
-                      </h3>
-                      <p className="text-[10px] font-bold text-[#ef6c33] uppercase tracking-widest mt-1">
-                        {visitor.company_name || 'Individual'}
-                      </p>
-                    </div>
+                  <div className="p-5">
                     
-                    <div className="flex flex-col gap-1 sm:text-right border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                      <p className="text-[11px] font-bold text-slate-600">
-                        📞 {visitor.phone || 'N/A'}
-                      </p>
-                      {visitor.email && (
-                        <p className="text-[11px] font-bold text-slate-600">
-                          ✉️ {visitor.email}
+                    {/* Header Info */}
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 mb-2">
+                      <div>
+                        <h3 className="text-lg font-black text-[#0b3d41] uppercase leading-tight">
+                          {visitor.full_name || 'Unknown Visitor'}
+                        </h3>
+                        <p className="text-[10px] font-bold text-[#ef6c33] uppercase tracking-widest mt-1">
+                          {visitor.company_name || 'Individual'}
                         </p>
-                      )}
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                        Scanned: {new Date(lead.created_at).toLocaleDateString()} at {new Date(lead.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </p>
+                      </div>
+                      
+                      <div className="flex flex-col gap-1 sm:text-right text-[11px] font-bold text-slate-600">
+                        <p>📞 {visitor.phone || 'N/A'}</p>
+                        {visitor.email && <p>✉️ {visitor.email}</p>}
+                      </div>
                     </div>
+
+                    {/* Notes Display */}
+                    {lead.notes && !editingId && (
+                      <div className="bg-slate-50 p-3 rounded-xl text-[11px] font-medium text-slate-600 italic mt-3 border-l-4 border-teal-200">
+                        "{lead.notes}"
+                      </div>
+                    )}
+
+                    {/* Note Editor */}
+                    {editingId === lead.id ? (
+                      <div className="space-y-3 mt-3 pt-3 border-t border-slate-100">
+                        <textarea 
+                          className="w-full p-3 text-xs border-2 rounded-xl outline-none focus:border-teal-400 transition-colors bg-white" 
+                          placeholder="Add details about what you discussed..." 
+                          value={noteText} 
+                          onChange={(e) => setNoteText(e.target.value)} 
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => saveNote(lead.id)} className="font-bold bg-[#0b3d41] hover:bg-slate-800 text-[10px] uppercase text-white px-4 rounded-lg">Save Note</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="font-bold text-[10px] uppercase text-slate-400 hover:bg-slate-100 px-4 rounded-lg">Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center pt-3 border-t border-slate-50 mt-3">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                          Scanned: {new Date(lead.created_at).toLocaleDateString()} at {new Date(lead.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 text-[10px] font-black text-[#0b3d41] uppercase bg-teal-50 hover:bg-teal-100 px-4 rounded-full transition-colors" 
+                          onClick={() => { setEditingId(lead.id); setNoteText(lead.notes || ''); }}
+                        >
+                          {lead.notes ? 'Edit Note ✏️' : '+ Add Private Note'}
+                        </Button>
+                      </div>
+                    )}
+
                   </div>
                 </Card>
               )
