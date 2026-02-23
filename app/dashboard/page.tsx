@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -18,7 +19,6 @@ export default function Dashboard() {
   
   // UI States
   const [scanning, setScanning] = useState(false)
-  const [showMyQR, setShowMyQR] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   
   // Data States
@@ -39,6 +39,8 @@ export default function Dashboard() {
     
     if (exhibitor) {
       setRole('exhibitor')
+      // Exhibitors have a dedicated leads page, so we don't strictly need to load them here, 
+      // but we keep the fetch just in case you ever want to show a "Total Scans" counter later.
       fetchExhibitorLeads(user.id)
     } else {
       setRole('visitor')
@@ -171,7 +173,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* --- NEW: EXHIBITOR QUICK ACTIONS --- */}
+      {/* --- EXHIBITOR QUICK ACTIONS --- */}
       {!scanning && role === 'exhibitor' && (
         <div className="flex gap-3 mb-4">
             <Button 
@@ -203,18 +205,6 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* SEARCH BAR */}
-      <div className="relative mb-6">
-        <input 
-          type="text" 
-          placeholder={role === 'exhibitor' ? "Search Name or Firm..." : "Search Exhibitor or Stall..."}
-          className="w-full p-4 pl-12 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 font-medium" 
-          value={searchQuery} 
-          onChange={(e) => setSearchQuery(e.target.value)} 
-        />
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
-      </div>
-
       {/* CAMERA MODAL */}
       {scanning && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
@@ -225,45 +215,66 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* CONNECTIONS LIST */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved ({filteredData.length})</h2>
-          {filteredData.length > 0 && <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black text-green-600 bg-green-50">Download Excel</Button>}
-        </div>
+      {/* ========================================== */}
+      {/* THE FOLLOWING SECTIONS ARE ONLY FOR VISITORS */}
+      {/* ========================================== */}
 
-        {filteredData.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-3xl"><p className="text-slate-400 font-bold uppercase text-xs">No connections found</p></div>
-        ) : (
-          filteredData.map((item) => (
-            <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden mb-3">
-              <div className="p-5">
-                <div className="flex items-center gap-4 mb-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white ${role === 'exhibitor' ? 'bg-[#ef6c33]' : 'bg-blue-600'}`}>
-                    {(role === 'exhibitor' ? item.visitors?.full_name : item.exhibitors?.company_name)?.charAt(0) || "?"}
+      {role === 'visitor' && (
+        <>
+          {/* SEARCH BAR */}
+          <div className="relative mb-6">
+            <input 
+              type="text" 
+              placeholder="Search Exhibitor or Stall..."
+              className="w-full p-4 pl-12 bg-white shadow-sm rounded-2xl text-sm outline-none border-0 font-medium" 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+            />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
+          </div>
+
+          {/* CONNECTIONS LIST */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center px-1">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved ({filteredData.length})</h2>
+              {filteredData.length > 0 && <Button onClick={exportToExcel} variant="ghost" size="sm" className="h-6 text-[9px] font-black text-green-600 bg-green-50">Download Excel</Button>}
+            </div>
+
+            {filteredData.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-3xl"><p className="text-slate-400 font-bold uppercase text-xs">No connections found</p></div>
+            ) : (
+              filteredData.map((item) => (
+                <Card key={item.id} className="border-0 shadow-sm bg-white rounded-2xl overflow-hidden mb-3">
+                  <div className="p-5">
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white bg-blue-600`}>
+                        {item.exhibitors?.company_name?.charAt(0) || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-slate-800 uppercase text-sm truncate">{item.exhibitors?.company_name || "Exhibitor"}</h3>
+                        <p className="text-[10px] text-blue-600 font-black uppercase">{`Stall: ${item.exhibitors?.stall_number || 'N/A'}`}</p>
+                      </div>
+                    </div>
+                    {item.notes && !editingId && <div className="bg-slate-50 p-3 rounded-xl text-[11px] font-medium text-slate-600 italic mb-3 border-l-4 border-blue-200">"{item.notes}"</div>}
+                    {editingId === item.id ? (
+                      <div className="space-y-3">
+                        <textarea className="w-full p-3 text-xs border-2 rounded-2xl outline-none" placeholder="Add details..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
+                        <div className="flex gap-2"><Button size="sm" onClick={() => saveNote(item.id)} className="font-bold bg-blue-600">SAVE</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>CANCEL</Button></div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                        <span className="text-[10px] font-black text-green-600 uppercase">⭐ SAVED</span>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>{item.notes ? 'Edit Note' : '+ Add Note'}</Button>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-slate-800 uppercase text-sm truncate">{role === 'exhibitor' ? (item.visitors?.full_name || "Visitor") : (item.exhibitors?.company_name || "Exhibitor")}</h3>
-                    <p className="text-[10px] text-blue-600 font-black uppercase">{role === 'exhibitor' ? item.visitors?.company_name : `Stall: ${item.exhibitors?.stall_number || 'N/A'}`}</p>
-                  </div>
-                </div>
-                {item.notes && !editingId && <div className="bg-slate-50 p-3 rounded-xl text-[11px] font-medium text-slate-600 italic mb-3 border-l-4 border-blue-200">"{item.notes}"</div>}
-                {editingId === item.id ? (
-                  <div className="space-y-3">
-                    <textarea className="w-full p-3 text-xs border-2 rounded-2xl outline-none" placeholder="Add details..." value={noteText} onChange={(e) => setNoteText(e.target.value)} />
-                    <div className="flex gap-2"><Button size="sm" onClick={() => saveNote(item.id)} className="font-bold bg-blue-600">SAVE</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>CANCEL</Button></div>
-                  </div>
-                ) : (
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-50">
-                    <span className="text-[10px] font-black text-green-600 uppercase">{role === 'exhibitor' ? `📞 ${item.visitors?.phone || 'No Phone'}` : '⭐ SAVED'}</span>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-4 rounded-full" onClick={() => { setEditingId(item.id); setNoteText(item.notes || ''); }}>{item.notes ? 'Edit Note' : '+ Add Note'}</Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   )
 }
