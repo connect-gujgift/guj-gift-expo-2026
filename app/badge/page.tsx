@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react' // Added Suspense
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
 
-export default function SecureExhibitorBadgePage() {
+// 1. Create a component for the actual badge content
+function BadgeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const badgeId = searchParams.get('id')
@@ -17,7 +18,6 @@ export default function SecureExhibitorBadgePage() {
 
   useEffect(() => {
     const verifyAndFetchBadge = async () => {
-      // 1. Get the currently logged-in user's session
       const { data: { user }, error: authError } = await supabase.auth.getUser()
 
       if (authError || !user) {
@@ -25,15 +25,12 @@ export default function SecureExhibitorBadgePage() {
         return
       }
 
-      // 2. SECURITY CHECK: Ensure requested badge ID matches the Logged-in User ID
-      // This prevents Exhibitors from viewing Staff or Visitor badges by changing the URL
       if (badgeId !== user.id) {
         setError("Access Denied: You can only view your own official badge.")
         setLoading(false)
         return
       }
 
-      // 3. Fetch the profile details to render the badge
       const { data, error: dbError } = await supabase
         .from('exhibitors')
         .select('*')
@@ -63,9 +60,7 @@ export default function SecureExhibitorBadgePage() {
 
   return (
     <div className="min-h-screen bg-slate-200 flex flex-col items-center justify-center p-4">
-      {/* Badge UI Rendering Code (Similar to your existing design) */}
       <div className="w-full max-w-[380px] bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border-8 border-white">
-        
         <div className="bg-[#0b3d41] p-8 text-center text-white">
            <img src="/event-logo.png" alt="Logo" className="h-14 mx-auto mb-4" />
            <div className="inline-block bg-[#ef6c33] px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">Official Exhibitor</div>
@@ -102,5 +97,14 @@ export default function SecureExhibitorBadgePage() {
         ⎙ Print Official Pass
       </Button>
     </div>
+  )
+}
+
+// 2. The main page component that wraps the content in Suspense
+export default function SecureExhibitorBadgePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center font-black uppercase text-[10px] tracking-widest text-slate-400">Loading System...</div>}>
+      <BadgeContent />
+    </Suspense>
   )
 }
