@@ -47,82 +47,82 @@ function BadgeContent() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-10 px-4 print:p-0 print:bg-white font-sans">
       
-      {/* FIXED 4x5.5 INCH CONTAINER */}
+      {/* 4x5.5 INCH VERTICAL BADGE */}
       <div 
         ref={badgeRef}
-        className="w-[380px] h-[580px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col print:shadow-none print:rounded-none border-[8px] border-white"
+        className="w-[380px] h-[580px] bg-white rounded-[3rem] shadow-2xl overflow-hidden relative flex flex-col print:shadow-none print:rounded-none border-[10px] border-white"
       >
         
-        {/* HEADER: LOGO & PILL */}
-        <div className="pt-10 pb-4 flex flex-col items-center flex-shrink-0">
-          <img src="/event-logo.png" alt="GGE 2026" className="h-20 mb-4 object-contain" />
-          <div className="bg-[#ef6c33] text-white px-10 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
+        {/* TOP: CENTERED LOGO & ROLE PILL */}
+        <div className="pt-10 flex flex-col items-center flex-shrink-0">
+          <img src="/event-logo.png" alt="GGE 2026" className="h-24 mb-6 object-contain" />
+          <div className="bg-[#ef6c33] text-white px-10 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.2em] shadow-sm">
             Official Exhibitor
           </div>
         </div>
 
-        {/* MIDDLE SECTION: FLEX-GROW ENSURES CENTER PLACEMENT */}
-        <div className="flex-grow flex flex-col items-center justify-center px-8 text-center">
-          <div className="p-3 border-[3px] border-[#0b3d41] rounded-[2rem] bg-white mb-6">
-            <QRCode value={profile.id} size={155} level="H" fgColor="#0b3d41" />
+        {/* MIDDLE: QR & NAME PLACEMENT */}
+        <div className="flex-grow flex flex-col items-center justify-center px-10 text-center">
+          <div className="p-4 border-[4px] border-[#0b3d41] rounded-[2.5rem] bg-white mb-8 shadow-sm">
+            <QRCode value={profile.id || 'ID'} size={170} level="H" fgColor="#0b3d41" />
           </div>
 
-          <h1 className="text-3xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-tight mb-1">
+          <h1 className="text-4xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-none mb-2">
             {profile.full_name}
           </h1>
-          <p className="text-[11px] font-bold text-[#ef6c33] uppercase tracking-widest">
+          <p className="text-[12px] font-bold text-[#ef6c33] uppercase tracking-widest">
             {profile.company_name}
           </p>
         </div>
 
         {/* STALL & CITY BAR */}
-        <div className="px-10 py-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+        <div className="px-12 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
           <div className="text-left">
-            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Stall Number</p>
-            <p className="text-2xl font-black text-[#0b3d41] italic leading-none">{profile.stall_number || 'T-BA'}</p>
+            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stall Number</p>
+            <p className="text-3xl font-black text-[#0b3d41] italic leading-none">{profile.stall_number || 'T-101'}</p>
           </div>
           <div className="text-right">
-            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Event City</p>
-            <p className="text-sm font-black text-[#0b3d41] uppercase">Ahmedabad</p>
+            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">Event City</p>
+            <p className="text-sm font-black text-[#0b3d41] uppercase tracking-tight">Ahmedabad</p>
           </div>
         </div>
 
-        {/* FOOTER: PROPER ALIGNMENT */}
-        <div className="bg-white p-6 border-t border-slate-100 flex flex-col items-center flex-shrink-0">
+        {/* FINAL FOOTER: CENTERED ORGANIZER & JUSTIFIED DETAILS */}
+        <div className="bg-white px-10 pb-8 pt-4 border-t border-slate-100 flex flex-col items-center flex-shrink-0">
            
-           {/* CENTERED ORGANIZER BLOCK */}
-           <div className="flex flex-col items-center w-full mb-5">
-              <p className="text-[6px] font-bold text-slate-300 uppercase tracking-[0.4em] mb-2 leading-none">Organized By</p>
-              <img src="/organizer-logo.png" alt="Shree Balaji" className="h-7 object-contain mb-1.5" />
-              <p className="text-[8px] font-black text-[#0b3d41] uppercase tracking-tighter leading-none">
+           {/* LOGO AREA - PERFECTLY CENTERED */}
+           <div className="flex flex-col items-center w-full mb-6">
+              <p className="text-[7px] font-bold text-slate-300 uppercase tracking-[0.4em] mb-2 leading-none">Organized By</p>
+              <img src="/organizer-logo.png" alt="Shree Balaji" className="h-8 object-contain mb-1.5" />
+              <p className="text-[9px] font-black text-[#0b3d41] uppercase tracking-tighter leading-none">
                 Shree Balaji Event LLP
               </p>
            </div>
 
-           {/* JUSTIFIED DATE & VENUE ROW */}
-           <div className="flex justify-between items-center w-full px-4 border-t border-slate-50 pt-3">
+           {/* DATE & VENUE ROW - JUSTIFIED SIDES */}
+           <div className="flex justify-between items-center w-full border-t border-slate-100 pt-4">
               <div className="text-left">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-slate-400 mb-0.5 leading-none">Date</p>
-                <p className="text-[9px] font-black text-[#0b3d41] leading-none">12-14 Aug 2026</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5 leading-none">Date</p>
+                <p className="text-[10px] font-black text-[#0b3d41] leading-none">12-14 Aug 2026</p>
               </div>
               <div className="text-right">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-slate-400 mb-0.5 leading-none">Venue</p>
-                <p className="text-[9px] font-black text-[#0b3d41] leading-none">GMDC Ground, Ahmedabad</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-0.5 leading-none">Venue</p>
+                <p className="text-[10px] font-black text-[#0b3d41] leading-none">GMDC Ground, Ahmedabad</p>
               </div>
            </div>
         </div>
       </div>
 
-      {/* MOBILE ACTION HUB */}
+      {/* ACTION HUB */}
       <div className="mt-8 flex flex-col gap-3 w-full max-w-[380px] print:hidden">
         <Button onClick={downloadBadge} className="bg-[#0b3d41] hover:bg-black text-white h-14 rounded-2xl font-black uppercase tracking-widest flex gap-3 shadow-xl">
-          📥 Save Image (PNG)
+          📥 Save PNG to Gallery
         </Button>
         <div className="grid grid-cols-2 gap-3">
-          <Button onClick={() => window.print()} variant="outline" className="h-12 rounded-xl border-2 font-black uppercase text-[9px] tracking-widest">
+          <Button onClick={() => window.print()} variant="outline" className="h-12 rounded-xl border-2 font-black uppercase text-[10px] tracking-widest">
             Print ⎙
           </Button>
-          <Button variant="outline" className="h-12 rounded-xl border-2 font-black uppercase text-[9px] tracking-widest">
+          <Button variant="outline" className="h-12 rounded-xl border-2 font-black uppercase text-[10px] tracking-widest">
             Email 📧
           </Button>
         </div>
