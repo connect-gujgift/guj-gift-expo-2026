@@ -4,114 +4,78 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function Dashboard() {
+export default function ExhibitorDashboard() {
   const router = useRouter()
-  
-  // --- STATE MANAGEMENT ---
-  const [user, setUser] = useState<any>(null)
-  const [role, setRole] = useState<'visitor' | 'exhibitor' | null>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // --- INITIALIZATION ---
-  useEffect(() => { 
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return router.push('/login')
-      setUser(user)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      // 1. Get the current logged-in user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-      // Check for Exhibitor Role
-      const { data: exhibitor } = await supabase.from('exhibitors').select('*').eq('id', user.id).single()
-      
-      if (exhibitor) {
-        setRole('exhibitor')
-      } else {
-        setRole('visitor')
+      if (authError || !user) {
+        router.push('/login')
+        return
+      }
+
+      // 2. Fetch the profile details
+      const { data, error: dbError } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (!dbError && data) {
+        setProfile(data)
       }
       setLoading(false)
     }
 
-    checkUser() 
+    fetchProfile()
   }, [router])
 
-  if (loading) return <div className="p-12 text-center font-black uppercase text-slate-400 text-xs tracking-widest">Loading Dashboard...</div>
+  if (loading) return <div className="p-10 text-center font-black uppercase text-xs">Loading Dashboard...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-24 font-sans text-slate-900" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
-      
-      {/* HEADER WITH LOGOUT */}
-      <div className="flex justify-between items-center mb-6 mt-2">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic text-[#0b3d41]">
-            {role === 'exhibitor' ? 'Exhibitor Hub' : 'Visitor Hub'}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live System</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-slate-50 p-4">
+      <div className="max-w-md mx-auto space-y-4">
         
-        <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="font-bold border-2 text-xs bg-white text-slate-500 rounded-xl hover:bg-slate-100">LOGOUT</Button>
-        </div>
-      </div>
+        {/* WELCOME CARD */}
+        <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden bg-[#0b3d41] text-white">
+          <CardContent className="p-8 text-center">
+            <h1 className="text-2xl font-black uppercase italic tracking-tighter">Welcome, {profile?.full_name}</h1>
+            <p className="text-[10px] font-bold uppercase text-teal-300 tracking-widest mt-2">{profile?.company_name}</p>
+          </CardContent>
+        </Card>
 
-      {/* --- UNIVERSAL BADGE CARD --- */}
-      <Card 
-        className="border-0 shadow-xl bg-[#0b3d41] text-white mb-4 active:scale-95 transition-all cursor-pointer overflow-hidden relative rounded-[2rem]" 
-        onClick={() => router.push('/badge')}
-      >
-        <CardContent className="p-6 flex items-center justify-between">
-          <div className="z-10">
-            <h2 className="text-xl font-black uppercase italic leading-none">
-              {role === 'exhibitor' ? 'Exhibitor Pass' : 'My Entry Pass'}
-            </h2>
-            <p className="text-[10px] font-bold uppercase text-teal-300 mt-2 tracking-widest">View & Download QR Badge</p>
+        {/* SECURE BADGE BUTTON */}
+        <Card 
+          className="border-0 shadow-md bg-white rounded-[2rem] p-6 cursor-pointer active:scale-95 transition-all"
+          onClick={() => {
+            // CRUCIAL: Pass the profile.id to match the security check
+            router.push(`/badge?id=${profile.id}`)
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black uppercase italic text-[#0b3d41]">Exhibitor Pass</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Official Entry Badge</p>
+            </div>
+            <div className="text-3xl">🎫</div>
           </div>
-          <div className="text-4xl opacity-40">🎫</div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-teal-500 rounded-full blur-3xl opacity-20"></div>
-        </CardContent>
-      </Card>
+        </Card>
 
-      {/* --- EXHIBITOR QUICK ACTIONS --- */}
-      {role === 'exhibitor' && (
-        <div className="flex gap-3 mb-4">
-            <Button 
-                onClick={() => router.push('/exhibitors/scanner')}
-                className="flex-1 bg-[#ef6c33] hover:bg-[#d45a27] h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all text-white text-[10px] flex gap-2 items-center justify-center"
-            >
-                <span className="text-lg">📷</span> Scan Lead
-            </Button>
-            
-            <Button 
-                onClick={() => router.push('/exhibitors/leads')}
-                className="flex-1 bg-white hover:bg-slate-50 text-[#0b3d41] border-2 border-slate-200 h-14 font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all text-[10px] flex gap-2 items-center justify-center"
-            >
-                <span className="text-lg">📊</span> View Leads
-            </Button>
+        {/* OTHER ACTIONS */}
+        <div className="grid grid-cols-2 gap-3">
+           <Button onClick={() => router.push('/exhibitor/leads')} className="bg-[#ef6c33] h-16 rounded-2xl font-black uppercase text-[10px] text-white">View Leads</Button>
+           <Button onClick={() => router.push('/exhibitor/scanner')} className="bg-blue-600 h-16 rounded-2xl font-black uppercase text-[10px] text-white">Scan Visitor</Button>
         </div>
-      )}
 
-      {/* --- VISITOR QUICK ACTIONS --- */}
-      {role === 'visitor' && (
-        <div className="flex gap-3 mb-4">
-            <Button 
-                onClick={() => router.push('/visitor/scanner')}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 h-14 font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-100 transition-all text-white text-[10px] flex gap-2 items-center justify-center"
-            >
-                <span className="text-lg">📷</span> Scan Exhibitor
-            </Button>
-            
-            <Button 
-                onClick={() => router.push('/visitor/connections')}
-                className="flex-1 bg-white hover:bg-slate-50 text-blue-600 border-2 border-slate-200 h-14 font-black uppercase tracking-widest rounded-2xl shadow-sm transition-all text-[10px] flex gap-2 items-center justify-center"
-            >
-                <span className="text-lg">📋</span> Saved Stalls
-            </Button>
-        </div>
-      )}
-
+        <Button variant="ghost" onClick={() => supabase.auth.signOut().then(() => router.push('/login'))} className="w-full text-slate-400 font-bold uppercase text-[10px] mt-10">Logout</Button>
+      </div>
     </div>
   )
 }
