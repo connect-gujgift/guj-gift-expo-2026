@@ -47,28 +47,28 @@ function BadgeContent() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-10 px-4 print:p-0 print:bg-white font-sans">
       
-      {/* 4x6 INCH STANDARD CONTAINER (Size kept exactly as is) */}
+      {/* 4x6 INCH STANDARD CONTAINER (Size is strictly 600px) */}
       <div 
         ref={badgeRef}
         className="w-[380px] h-[600px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col justify-between print:shadow-none print:rounded-none border-[8px] border-white shrink-0"
       >
         
-        {/* --- 1. HEADER --- */}
-        <div className="pt-8 pb-2 flex flex-col items-center flex-none">
-          {/* Increased logo size (h-28) */}
-          <img src="/event-logo.png" alt="GGE 2026" className="h-28 mb-4 object-contain" />
+        {/* --- 1. HEADER (Tighter padding to save space) --- */}
+        <div className="pt-6 pb-2 flex flex-col items-center flex-none">
+          {/* Bigger event logo as requested */}
+          <img src="/event-logo.png" alt="GGE 2026" className="h-24 mb-3 object-contain" />
           <div className="bg-[#ef6c33] text-white px-10 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.2em] shadow-sm">
             Official Exhibitor
           </div>
         </div>
 
-        {/* --- 2. MIDDLE (QR & Name) --- */}
+        {/* --- 2. MIDDLE (Decreased QR Code Size to 135) --- */}
         <div className="flex-grow flex flex-col items-center justify-center px-6 text-center">
-          <div className="p-3 border-[3px] border-[#0b3d41] rounded-[2rem] bg-white mb-6 shadow-sm">
-            <QRCode value={profile.id || 'ID'} size={160} level="H" fgColor="#0b3d41" />
+          <div className="p-2.5 border-[3px] border-[#0b3d41] rounded-[1.5rem] bg-white mb-4 shadow-sm">
+            <QRCode value={profile.id || 'ID'} size={135} level="H" fgColor="#0b3d41" />
           </div>
 
-          <h1 className="text-3xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-none mb-2 px-2">
+          <h1 className="text-3xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-none mb-1.5 px-2">
             {profile.full_name}
           </h1>
           <p className="text-[11px] font-bold text-[#ef6c33] uppercase tracking-widest px-2">
@@ -77,13 +77,13 @@ function BadgeContent() {
         </div>
 
         {/* --- 3. BOTTOM INFO BAR --- */}
-        <div className="px-10 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 flex-none">
+        <div className="px-10 py-3.5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 flex-none">
           <div className="text-left">
             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stall Number</p>
             <p className="text-2xl font-black text-[#0b3d41] italic leading-none">{profile.stall_number || 'T-BA'}</p>
           </div>
           
-          {/* Updated Event Location Text with wrapping for longer text */}
+          {/* Event Location text with line wrapping */}
           <div className="text-right flex flex-col items-end">
             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">Event Location</p>
             <p className="text-[10px] font-black text-[#0b3d41] uppercase tracking-tight leading-tight text-right max-w-[150px]">
@@ -92,11 +92,11 @@ function BadgeContent() {
           </div>
         </div>
 
-        {/* --- 4. FOOTER (Organizer Only) --- */}
-        <div className="bg-white px-8 pt-5 pb-8 border-t border-slate-100 flex flex-col items-center flex-none">
+        {/* --- 4. FOOTER (Safely inside the bounds now) --- */}
+        <div className="bg-white px-8 pt-4 pb-5 border-t border-slate-100 flex flex-col items-center flex-none">
            <div className="flex flex-col items-center w-full">
-              <p className="text-[7px] font-bold text-slate-300 uppercase tracking-[0.4em] mb-2 leading-none">Organized By</p>
-              <img src="/organizer-logo.png" alt="Shree Balaji" className="h-10 object-contain mb-2" />
+              <p className="text-[7px] font-bold text-slate-300 uppercase tracking-[0.4em] mb-1.5 leading-none">Organized By</p>
+              <img src="/organizer-logo.png" alt="Shree Balaji" className="h-9 object-contain mb-1.5" />
               <p className="text-[9px] font-black text-[#0b3d41] uppercase tracking-tighter leading-none">
                 Shree Balaji Event LLP
               </p>
