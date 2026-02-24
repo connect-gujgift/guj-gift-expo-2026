@@ -1,237 +1,106 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import QRCode from "react-qr-code"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
-function BadgeDisplay() {
-  const searchParams = useSearchParams()
-  const urlId = searchParams.get('id')
+export default function SecureExhibitorBadgePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const badgeId = searchParams.get('id')
   
-  const [person, setPerson] = useState<any>(null)
-  const [role, setRole] = useState<string>('VISITOR')
+  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  
-  const [needsLookup, setNeedsLookup] = useState(false)
-  const [phone, setPhone] = useState('')
-  const [lookupError, setLookupError] = useState('')
-  const [lookupLoading, setLookupLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    if (urlId) {
-      fetchPersonById(urlId)
-    } else {
+    const verifyAndFetchBadge = async () => {
+      // 1. Get the currently logged-in user's session
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        router.push('/login')
+        return
+      }
+
+      // 2. SECURITY CHECK: Ensure requested badge ID matches the Logged-in User ID
+      // This prevents Exhibitors from viewing Staff or Visitor badges by changing the URL
+      if (badgeId !== user.id) {
+        setError("Access Denied: You can only view your own official badge.")
+        setLoading(false)
+        return
+      }
+
+      // 3. Fetch the profile details to render the badge
+      const { data, error: dbError } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (dbError || !data) {
+        setError("Profile not found.")
+      } else {
+        setProfile(data)
+      }
       setLoading(false)
-      setNeedsLookup(true)
-    }
-  }, [urlId])
-
-  const fetchPersonById = async (targetId: string) => {
-    setLoading(true)
-    
-    let { data } = await supabase.from('visitors').select('*').eq('id', targetId).single()
-    let userRole = 'VISITOR'
-
-    if (!data) {
-      const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('id', targetId).single()
-      if (exhibitorData) {
-        data = exhibitorData
-        userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
-      }
     }
 
-    if (data) {
-      setPerson(data)
-      setRole(userRole)
-      setNeedsLookup(false)
-    } else {
-      setNeedsLookup(true)
-    }
-    setLoading(false)
-  }
+    verifyAndFetchBadge()
+  }, [badgeId, router])
 
-  const handlePhoneLookup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLookupLoading(true)
-    setLookupError('')
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50 font-black uppercase text-[10px] tracking-widest text-slate-400">Verifying Identity...</div>
 
-    let { data } = await supabase.from('visitors').select('*').eq('phone', phone).single()
-    let userRole = 'VISITOR'
-
-    if (!data) {
-      const { data: exhibitorData } = await supabase.from('exhibitors').select('*').eq('phone', phone).single()
-      if (exhibitorData) {
-        data = exhibitorData
-        userRole = exhibitorData.is_staff ? 'STAFF' : 'EXHIBITOR'
-      }
-    }
-
-    if (data) {
-      setPerson(data)
-      setRole(userRole)
-      setNeedsLookup(false)
-    } else {
-      setLookupError('No pass found for this phone number.')
-    }
-    setLookupLoading(false)
-  }
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-bold tracking-widest uppercase text-xs">Loading Digital Pass...</div>
-
-  const stallNumber = person?.stall_number || person?.stall_no || person?.stall || person?.Stall || '';
-
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 font-sans text-slate-900 pb-20">
-      
-      <div className="w-full max-w-[320px] mb-4 flex justify-between items-center opacity-50">
-          <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-[10px] font-black tracking-widest uppercase p-0 hover:bg-transparent">
-             ← Back
-          </Button>
-          <img src="/event-logo.png" alt="GGE 2026" className="h-6 object-contain grayscale" />
-      </div>
-
-      {needsLookup && !person ? (
-        <Card className="w-full max-w-[320px] border-0 shadow-2xl overflow-hidden rounded-[1.5rem] bg-white">
-          <CardHeader className="bg-[#0b3d41] text-white p-6 text-center">
-            <img src="/event-logo.png" alt="GGE 2026" className="h-12 mx-auto mb-3 object-contain" />
-            <CardTitle className="text-lg font-black uppercase tracking-tight italic">Find My Badge</CardTitle>
-            <p className="text-[9px] font-bold text-teal-200 uppercase tracking-widest mt-1 opacity-80">Enter Phone Number to Continue</p>
-          </CardHeader>
-          
-          <CardContent className="p-6">
-            <form onSubmit={handlePhoneLookup} className="space-y-5">
-              {lookupError && (
-                <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-600 text-[10px] font-black uppercase leading-tight">
-                  {lookupError}
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Registered Phone Number</Label>
-                <Input 
-                  type="text" 
-                  placeholder="e.g. 9876543210" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  className="bg-slate-50 border-0 h-10 font-medium text-center tracking-widest"
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={lookupLoading}
-                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-100 transition-all text-white text-[11px]"
-              >
-                {lookupLoading ? 'Searching...' : 'Retrieve Pass'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="w-full max-w-[320px] flex flex-col items-center">
-          
-          <Card className="w-full border-0 shadow-2xl overflow-hidden rounded-[1.5rem] bg-white relative">
-            
-            {/* UPDATED: Significantly larger Top Event Logo with reduced padding */}
-            <div className="bg-white pt-2 pb-1 flex justify-center">
-              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-[4.5rem] object-contain" />
-            </div>
-
-            {/* UPDATED: Pulled pill higher up to compensate for the larger logo */}
-            <div className="flex justify-center -mt-4 relative z-10">
-              <div className={`${role === 'EXHIBITOR' ? 'bg-[#0b3d41]' : 'bg-[#ef6c33]'} text-white px-4 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border-2 border-white shadow-sm`}>
-                {role === 'VISITOR' ? 'VALUED VISITOR' : 'OFFICIAL EXHIBITOR'}
-              </div>
-            </div>
-
-            {/* UPDATED: QR code squeezed slightly and padding reduced */}
-            <div className="px-5 pt-2 pb-2 bg-white flex-col flex gap-2 text-center items-center">
-              <div className={`p-1 border-2 ${role === 'EXHIBITOR' ? 'border-[#0b3d41]' : 'border-[#ef6c33]'} rounded-xl bg-white inline-block`}>
-                <QRCode value={person.id} size={105} fgColor="#0b3d41" level="Q" />
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <h2 className="text-xl font-black text-[#0b3d41] uppercase leading-none tracking-tighter break-words text-center">
-                  {person.full_name}
-                </h2>
-                <p className={`text-[9px] font-black ${role === 'EXHIBITOR' ? 'text-[#0b3d41]' : 'text-[#ef6c33]'} uppercase tracking-widest mt-0.5`}>
-                  {role}
-                </p>
-              </div>
-
-              <div className="border-t border-slate-200 w-full pt-1.5 mt-0.5">
-                {stallNumber && (
-                    <div className="text-[#ef6c33] font-black text-[1.15rem] leading-none mb-1 uppercase tracking-tighter">
-                        STALL: {stallNumber}
-                    </div>
-                )}
-                {!stallNumber && (
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 mt-0.5">COMPANY / FIRM</p>
-                )}
-                <p className="text-sm font-black text-[#0b3d41] uppercase leading-tight">
-                  {person.company_name || 'Individual'}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-[#0b3d41] text-white flex px-5 py-2 w-full">
-              <div className="w-1/2 pr-3 border-r border-teal-700/50 text-left">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-teal-200/60 mb-0.5">Date</p>
-                <p className="text-[9px] font-black uppercase tracking-widest leading-none">12-14 AUG 2026</p>
-              </div>
-              <div className="w-1/2 pl-3 text-left">
-                <p className="text-[7px] font-bold uppercase tracking-widest text-teal-200/60 mb-0.5">Location</p>
-                <p className="text-[8px] font-black uppercase tracking-wide leading-tight">GMDC GROUND,<br/>AHMEDABAD</p>
-              </div>
-            </div>
-
-            {/* UPDATED: Much larger Organizer Logo with tighter wrapper padding */}
-            <div className="bg-slate-50 px-5 py-1.5 flex items-center justify-center gap-3">
-              <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                <img src="/organizer-logo.png" alt="Organizer Logo" className="w-full h-full object-cover scale-110" onError={(e) => e.currentTarget.style.display = 'none'} />
-              </div>
-              <div className="text-left">
-                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0">Organized By</p>
-                <p className="text-[9px] font-black text-[#0b3d41] uppercase tracking-wide">SHREE BALAJI EVENT LLP</p>
-              </div>
-            </div>
-          </Card>
-
-          <div className="w-full mt-5 space-y-3">
-            <Button 
-                onClick={() => window.open(`/badge/print?id=${person.id}`, '_blank')}
-                className="w-full bg-[#ef6c33] hover:bg-[#d45a27] h-12 font-black uppercase tracking-widest rounded-xl shadow-lg shadow-orange-100 transition-all text-white text-[11px]"
-            >
-                🖨️ Print / Download Pass
-            </Button>
-            <Button 
-                onClick={() => {
-                    setPerson(null);
-                    setNeedsLookup(true);
-                }}
-                variant="ghost"
-                className="w-full text-slate-400 hover:text-slate-800 font-bold uppercase tracking-widest text-[9px]"
-            >
-                Not your badge? Search again
-            </Button>
-          </div>
-        </div>
-      )}
+  if (error) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+      <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 text-2xl">✕</div>
+      <p className="font-black uppercase text-xs tracking-widest text-slate-800">{error}</p>
+      <Button onClick={() => router.push('/dashboard')} className="mt-6 bg-[#0b3d41] uppercase font-bold text-[10px]">Return to Hub</Button>
     </div>
   )
-}
 
-export default function DigitalBadgePage() {
   return (
-    <Suspense fallback={<div className="p-10 text-center font-bold text-slate-500 mt-20 uppercase tracking-widest text-xs">Loading...</div>}>
-      <BadgeDisplay />
-    </Suspense>
+    <div className="min-h-screen bg-slate-200 flex flex-col items-center justify-center p-4">
+      {/* Badge UI Rendering Code (Similar to your existing design) */}
+      <div className="w-full max-w-[380px] bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border-8 border-white">
+        
+        <div className="bg-[#0b3d41] p-8 text-center text-white">
+           <img src="/event-logo.png" alt="Logo" className="h-14 mx-auto mb-4" />
+           <div className="inline-block bg-[#ef6c33] px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">Official Exhibitor</div>
+        </div>
+
+        <div className="p-8 flex flex-col items-center gap-6">
+           <div className="p-3 border-4 border-[#0b3d41] rounded-3xl">
+             <QRCode value={profile.id} size={150} level="H" />
+           </div>
+
+           <div className="text-center">
+             <h1 className="text-3xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-none">{profile.full_name}</h1>
+             <p className="text-[10px] font-bold text-[#ef6c33] uppercase tracking-widest mt-2">{profile.company_name}</p>
+           </div>
+
+           <div className="w-full pt-6 border-t border-slate-100 flex justify-between items-center">
+              <div>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Stall Number</p>
+                <p className="text-xl font-black text-[#0b3d41] uppercase italic">{profile.stall_number || 'N/A'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Event City</p>
+                <p className="text-sm font-black text-[#0b3d41] uppercase">Ahmedabad</p>
+              </div>
+           </div>
+        </div>
+
+        <div className="bg-slate-50 p-4 text-center">
+           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Organized by Shree Balaji Event LLP</p>
+        </div>
+      </div>
+
+      <Button onClick={() => window.print()} className="mt-8 bg-[#ef6c33] hover:bg-[#d45a27] font-black uppercase tracking-widest h-14 w-full max-w-[380px] rounded-2xl shadow-xl">
+        ⎙ Print Official Pass
+      </Button>
+    </div>
   )
 }
