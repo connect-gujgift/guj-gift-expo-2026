@@ -17,7 +17,7 @@ export default function StallManagementPage() {
   const [companyName, setCompanyName] = useState('')
   const [badgeLimit, setBadgeLimit] = useState('5')
   const [stallType, setStallType] = useState('Silver')
-  const [isPaid, setIsPaid] = useState(false)
+  const [paymentStatus, setPaymentStatus] = useState('Fully Paid') // NEW STATE
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -46,7 +46,6 @@ export default function StallManagementPage() {
     e.preventDefault()
     setSaving(true)
     
-    // Supports comma separated values for combined stalls
     const stallArray = stallInput.split(',').map(s => s.trim().toUpperCase())
     
     const { error } = await supabase
@@ -56,20 +55,25 @@ export default function StallManagementPage() {
         company_name: companyName, 
         badge_limit: parseInt(badgeLimit), 
         stall_type: stallType,
-        is_paid: isPaid 
+        payment_status: paymentStatus // SAVING NEW STATUS
       }])
 
     if (error) {
       alert(error.message)
     } else {
-      setStallInput(''); setCompanyName(''); setBadgeLimit('5'); setIsPaid(false);
+      setStallInput(''); setCompanyName(''); setBadgeLimit('5'); setPaymentStatus('Fully Paid');
       fetchStalls()
     }
     setSaving(false)
   }
 
-  const togglePaymentStatus = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase.from('stalls').update({ is_paid: !currentStatus }).eq('id', id)
+  // Quick toggle function for the table
+  const cyclePaymentStatus = async (id: string, currentStatus: string) => {
+    let nextStatus = 'Fully Paid'
+    if (currentStatus === 'Fully Paid') nextStatus = 'Advance / On Hold'
+    else if (currentStatus === 'Advance / On Hold') nextStatus = 'Unpaid'
+
+    const { error } = await supabase.from('stalls').update({ payment_status: nextStatus }).eq('id', id)
     if (!error) fetchStalls()
   }
 
@@ -101,7 +105,7 @@ export default function StallManagementPage() {
             <CardContent className="p-6">
               <form onSubmit={handleAddStall} className="space-y-4">
                 <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Numbers (e.g. T-1, T-2)</Label>
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Numbers</Label>
                   <Input placeholder="T-1, T-2" value={stallInput} onChange={(e) => setStallInput(e.target.value)} required className="font-black bg-slate-50 border-0" />
                 </div>
                 
@@ -117,12 +121,7 @@ export default function StallManagementPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="font-bold text-[10px] uppercase text-slate-400">Tier</Label>
-                    {/* Native Select to ensure build success */}
-                    <select 
-                      value={stallType} 
-                      onChange={(e) => setStallType(e.target.value)}
-                      className="w-full bg-slate-50 border-0 font-bold text-[10px] uppercase h-10 rounded-md px-2 outline-none"
-                    >
+                    <select value={stallType} onChange={(e) => setStallType(e.target.value)} className="w-full bg-slate-50 border-0 font-bold text-[10px] uppercase h-10 rounded-md px-2 outline-none">
                       <option value="Silver">Silver (9m²)</option>
                       <option value="Gold">Gold (18m²)</option>
                       <option value="Diamond">Diamond (36m²)</option>
@@ -130,11 +129,16 @@ export default function StallManagementPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
-                  <input type="checkbox" id="isPaid" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} className="w-5 h-5 accent-teal-600" />
-                  <Label htmlFor="isPaid" className="font-black text-[10px] uppercase">Fully Paid</Label>
+                <div className="space-y-1">
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Booking Status</Label>
+                  <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="w-full bg-slate-50 border-0 font-bold text-xs uppercase h-12 rounded-xl px-4 outline-none">
+                    <option value="Fully Paid">✅ Fully Paid (Confirmed)</option>
+                    <option value="Advance / On Hold">⏳ Advance / On Hold</option>
+                    <option value="Unpaid">❌ Unpaid (Booked)</option>
+                  </select>
                 </div>
-                <Button type="submit" disabled={saving} className="w-full bg-teal-600 h-14 font-black uppercase text-white rounded-2xl shadow-lg">
+                
+                <Button type="submit" disabled={saving} className="w-full bg-teal-600 h-14 font-black uppercase text-white rounded-2xl shadow-lg mt-2">
                   {saving ? 'Saving...' : 'Register Stall'}
                 </Button>
               </form>
@@ -143,7 +147,7 @@ export default function StallManagementPage() {
 
           <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-white border-b p-6">
-               <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-400">Inventory Status</CardTitle>
+               <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-400">Live Inventory</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
               <table className="w-full text-left text-xs">
@@ -151,8 +155,7 @@ export default function StallManagementPage() {
                   <tr>
                     <th className="p-4 px-6">Stalls</th>
                     <th className="p-4">Firm</th>
-                    <th className="p-4">Tier</th>
-                    <th className="p-4">Payment</th>
+                    <th className="p-4">Status</th>
                     <th className="p-4 text-right px-6">Action</th>
                   </tr>
                 </thead>
@@ -167,10 +170,14 @@ export default function StallManagementPage() {
                         </div>
                       </td>
                       <td className="p-4 font-bold text-slate-700 uppercase">{s.company_name}</td>
-                      <td className="p-4 font-black text-[9px] uppercase italic text-slate-400">{s.stall_type || 'Silver'}</td>
                       <td className="p-4">
-                        <button onClick={() => togglePaymentStatus(s.id, s.is_paid)} className={`px-3 py-1 rounded-full text-[8px] font-black uppercase shadow-sm ${s.is_paid ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                          {s.is_paid ? 'PAID' : 'UNPAID'}
+                        {/* Status Toggle Button */}
+                        <button onClick={() => cyclePaymentStatus(s.id, s.payment_status || 'Fully Paid')} className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase shadow-sm transition-all ${
+                          s.payment_status === 'Fully Paid' ? 'bg-green-100 text-green-700 border border-green-200' : 
+                          s.payment_status === 'Advance / On Hold' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
+                          'bg-red-100 text-red-700 border border-red-200'
+                        }`}>
+                          {s.payment_status || 'Fully Paid'} ↻
                         </button>
                       </td>
                       <td className="p-4 text-right px-6">
