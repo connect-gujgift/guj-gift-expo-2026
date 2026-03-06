@@ -70,7 +70,7 @@ export default function ExhibitorDashboard() {
 
         {/* OTHER ACTIONS */}
         <div className="grid grid-cols-2 gap-3">
-           <Button onClick={() => router.push('/exhibitor/leads')} className="bg-[#ef6c33] h-16 rounded-2xl font-black uppercase text-[10px] text-white">View Leads</Button>
+           <Button onClick={() => router.push('/exhibitors/leads')} className="bg-[#ef6c33] h-16 rounded-2xl font-black uppercase text-[10px] text-white">View Leads</Button>
            <Button onClick={() => router.push('/exhibitor/scanner')} className="bg-blue-600 h-16 rounded-2xl font-black uppercase text-[10px] text-white">Scan Visitor</Button>
         </div>
 
