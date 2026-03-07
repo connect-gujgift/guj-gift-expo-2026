@@ -21,7 +21,6 @@ function PublicMapContent() {
       setLoading(false)
     }
     
-    // Auto-refresh the map every 10 seconds so it's always live
     fetchOccupancy()
     const interval = setInterval(fetchOccupancy, 10000)
     return () => clearInterval(interval)
@@ -31,16 +30,11 @@ function PublicMapContent() {
   const getStallStyle = (stallId: string) => {
     const data = occupancy[stallId]
     
-    // 1. Available (White with green border)
-    if (!data) return 'bg-white border-green-500 text-green-700 hover:bg-green-50 shadow-sm'
-    
-    // 2. On Hold / Unpaid (Yellow/Amber)
+    if (!data) return 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50 shadow-sm' // Available
     if (data.payment_status === 'Advance / On Hold' || data.payment_status === 'Unpaid') {
-      return 'bg-amber-400 border-amber-600 text-amber-950 shadow-md opacity-90'
+      return 'bg-amber-300 border-amber-500 text-amber-900 shadow-md opacity-90' // On Hold
     }
-    
-    // 3. Fully Booked (Slate/Dark)
-    return 'bg-slate-800 border-slate-900 text-white shadow-lg'
+    return 'bg-slate-800 border-slate-900 text-white shadow-lg' // Fully Booked
   }
 
   const getStallLabel = (stallId: string) => {
@@ -50,38 +44,60 @@ function PublicMapContent() {
     return 'BOOKED'
   }
 
-  // Array Generators
   const getStalls = (start: number, end: number, reverse = false) => {
     const arr = []
     for (let i = start; i <= end; i++) arr.push(i.toString())
     return reverse ? arr.reverse() : arr
   }
-  const getCustomStalls = (prefix: string, start: number, end: number, reverse = false) => {
-    const arr = []
-    for (let i = start; i <= end; i++) arr.push(`${prefix}${i}`)
-    return reverse ? arr.reverse() : arr
-  }
 
-  // Dynamic Stall Box Component
-  const StallBox = ({ id, type = 'Silver', customClass = '' }: { id: string, type?: 'Silver'|'Gold'|'Diamond'|'Platinum'|'Custom', customClass?: string }) => {
+  // Pixel-perfect sizing based on your layout image gaps
+  const StallBox = ({ id, type = 'Silver', customClass = '' }: { id: string, type?: 'Silver'|'Gold'|'Diamond'|'Platinum', customClass?: string }) => {
     const status = getStallLabel(id)
     
-    // Dimensions based on Tier
-    let sizeClass = 'w-12 h-12' // Silver 9sqm
-    if (type === 'Gold') sizeClass = 'w-24 h-24' // Gold 36sqm
-    if (type === 'Diamond') sizeClass = 'w-32 h-24' // Diamond 54sqm
-    if (type === 'Platinum') sizeClass = 'w-40 h-24' // Platinum 72sqm
+    let sizeClass = 'w-10 h-10' // Silver (1x1)
+    if (type === 'Gold') sizeClass = 'w-[84px] h-[84px]' // Gold (2x2)
+    if (type === 'Diamond') sizeClass = 'w-[128px] h-[84px]' // Diamond (3x2)
+    if (type === 'Platinum') sizeClass = 'w-[172px] h-[84px]' // Platinum (4x2)
     if (customClass) sizeClass = customClass
 
     return (
-      <div title={`${id}: ${status}`} className={`border-2 rounded-md flex flex-col items-center justify-center p-1 cursor-default transition-all duration-500 ${sizeClass} ${getStallStyle(id)}`}>
-        <span className={`font-black ${type === 'Silver' ? 'text-[8px]' : 'text-sm'}`}>{id}</span>
-        {status !== 'AVAILABLE' && <span className="text-[5px] font-bold uppercase mt-1 opacity-70 tracking-widest leading-none text-center px-1">{status}</span>}
+      <div title={`${id}: ${status}`} className={`border-2 flex flex-col items-center justify-center p-1 cursor-default transition-all duration-500 ${sizeClass} ${getStallStyle(id)}`}>
+        <span className={`font-black ${type === 'Silver' ? 'text-[9px]' : 'text-sm'}`}>{id}</span>
+        {status !== 'AVAILABLE' && <span className="text-[5px] font-bold uppercase mt-1 opacity-70 tracking-widest text-center px-1 leading-none">{status}</span>}
       </div>
     )
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 uppercase text-[10px] bg-slate-50">Loading Live Inventory...</div>
+  // Helpers for generating the central islands
+  const LeftIsland = ({ lg, rg, ts, te, bs, be }: any) => (
+    <div className="flex gap-1 border-[3px] border-slate-100 p-1 bg-slate-50">
+       <StallBox id={lg} type="Gold" />
+       <div className="flex flex-col gap-1">
+          <div className="flex gap-1">{getStalls(ts, te, true).map(id => <StallBox key={id} id={id} />)}</div>
+          <div className="flex gap-1">{getStalls(bs, be).map(id => <StallBox key={id} id={id} />)}</div>
+       </div>
+       <StallBox id={rg} type="Gold" />
+    </div>
+  )
+
+  const RightIsland = ({ lg, rg, ts, te, bs, be }: any) => (
+    <div className="flex gap-1 border-[3px] border-slate-100 p-1 bg-slate-50">
+       <StallBox id={lg} type="Gold" />
+       <div className="flex flex-col gap-1">
+          <div className="flex gap-1">{getStalls(ts, te, true).map(id => <StallBox key={id} id={id} />)}</div>
+          <div className="flex gap-1">{getStalls(bs, be).map(id => <StallBox key={id} id={id} />)}</div>
+       </div>
+       <StallBox id={rg} type="Gold" />
+    </div>
+  )
+
+  const IconBox = () => (
+    <div className="w-12 h-12 bg-slate-100 border-2 border-slate-200 text-slate-400 flex items-center justify-center text-xl shadow-inner">
+      ⚙️
+    </div>
+  )
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 uppercase text-[10px] bg-slate-50">Generating Layout...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-20 font-sans">
@@ -93,114 +109,77 @@ function PublicMapContent() {
           <h1 className="text-3xl font-black uppercase italic text-[#0b3d41] tracking-tighter">Live Availability Map</h1>
           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em] mt-1 mb-6">Real-Time Inventory • GMDC Ground</p>
           
-          {/* SALES LEGEND */}
           <div className="flex flex-wrap justify-center gap-6 text-[10px] font-black uppercase tracking-widest py-2 bg-slate-50 mx-4 md:mx-auto max-w-fit px-8 rounded-full border border-slate-200">
-            <div className="flex items-center gap-2"><span className="w-4 h-4 bg-white border-2 border-green-500 rounded-full shadow-sm"></span> Available</div>
+            <div className="flex items-center gap-2"><span className="w-4 h-4 bg-white border-2 border-slate-300 rounded-full shadow-sm"></span> Available</div>
             <div className="flex items-center gap-2"><span className="w-4 h-4 bg-amber-400 border border-amber-600 rounded-full shadow-sm"></span> On Hold</div>
             <div className="flex items-center gap-2"><span className="w-4 h-4 bg-slate-800 rounded-full shadow-sm"></span> Booked</div>
           </div>
         </div>
 
-        {/* REBUILT PUBLIC MAP CONTAINER */}
+        {/* MAP CONTAINER */}
         <div className="bg-white p-8 rounded-[3rem] shadow-2xl overflow-x-auto border-2 border-slate-100">
-           <div className="min-w-[1200px] flex flex-col gap-10 p-4">
+           <div className="min-w-[1250px] flex flex-col gap-8">
               
               {/* TOP ROW */}
-              <div className="flex justify-between items-start gap-4 border-b-2 border-dashed border-slate-200 pb-8">
-                <StallBox id="P1" type="Platinum" />
-                <div className="bg-green-50 text-green-600 px-8 py-2 rounded-xl border-2 border-green-200 font-black uppercase tracking-widest text-sm self-center">ENTRY</div>
-                <div className="flex flex-wrap gap-1.5 justify-center max-w-3xl">
+              <div className="flex justify-between items-center px-6">
+                <div className="bg-pink-100 text-pink-700 px-8 py-3 rounded-lg border-2 border-pink-300 font-black uppercase tracking-widest text-lg shadow-sm">ENTRY</div>
+                <div className="flex gap-1 bg-slate-200 p-1">
                   {getStalls(1, 19).map(id => <StallBox key={id} id={id} />)}
                 </div>
-                <div className="bg-red-50 text-red-600 px-8 py-2 rounded-xl border-2 border-red-200 font-black uppercase tracking-widest text-sm self-center">EXIT</div>
-                <StallBox id="P6" type="Platinum" />
+                <div className="bg-pink-100 text-pink-700 px-8 py-3 rounded-lg border-2 border-pink-300 font-black uppercase tracking-widest text-lg shadow-sm">EXIT</div>
               </div>
 
               {/* MAIN BODY GRID */}
-              <div className="flex justify-between gap-8">
+              <div className="flex justify-between gap-6 px-4">
                 
                 {/* LEFT FLANK */}
-                <div className="flex flex-col gap-8">
-                  <div className="flex gap-4 items-center">
-                    <StallBox id="P2" type="Platinum" customClass="w-24 h-48" />
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex gap-1.5">{getStalls(20, 24, true).map(id => <StallBox key={id} id={id} />)}</div>
-                      <div className="flex gap-1.5">{getStalls(25, 29).map(id => <StallBox key={id} id={id} />)}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-center">
-                    <StallBox id="P3" type="Platinum" customClass="w-24 h-48" />
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex gap-1.5">{getStalls(30, 34, true).map(id => <StallBox key={id} id={id} />)}</div>
-                      <div className="flex gap-1.5">{getStalls(35, 39).map(id => <StallBox key={id} id={id} />)}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-center">
-                    <StallBox id="P4" type="Platinum" customClass="w-24 h-48" />
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex gap-1.5">{getStalls(40, 44, true).map(id => <StallBox key={id} id={id} />)}</div>
-                      <div className="flex gap-1.5">{getStalls(45, 49).map(id => <StallBox key={id} id={id} />)}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-center">
-                    <StallBox id="P5" type="Platinum" customClass="w-24 h-48" />
+                <div className="flex flex-col justify-between gap-6">
+                  <StallBox id="P1" type="Platinum" />
+                  <StallBox id="P2" type="Platinum" />
+                  <StallBox id="P3" type="Platinum" />
+                  <StallBox id="P4" type="Platinum" />
+                  <StallBox id="P5" type="Platinum" />
+                  <div className="bg-purple-100 text-purple-800 border-4 border-purple-300 w-[172px] h-[84px] flex flex-col items-center justify-center shadow-md">
+                    <span className="text-xl font-black uppercase tracking-widest">VIP</span>
+                    <span className="text-xs font-black uppercase tracking-widest">LOUNGE</span>
                   </div>
                 </div>
 
-                {/* CENTRAL PREMIUM HUB */}
-                <div className="flex flex-col gap-10 bg-slate-50 p-6 rounded-3xl border border-slate-200">
-                  <div className="flex items-center gap-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {getCustomStalls('G', 1, 1).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 6, 7).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 12, 12).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                    </div>
-                    <StallBox id="D1" type="Diamond" customClass="w-32 h-[200px]" />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {getCustomStalls('G', 2, 2).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 5, 5).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 8, 8).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 11, 11).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                    </div>
-                    <StallBox id="D2" type="Diamond" customClass="w-32 h-[200px]" />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {getCustomStalls('G', 3, 4).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                      {getCustomStalls('G', 9, 10).map(id => <StallBox key={id} id={id} type="Gold" />)}
-                    </div>
-                    <StallBox id="D3" type="Diamond" customClass="w-32 h-[200px]" />
-                  </div>
+                {/* LEFT CENTER ISLANDS */}
+                <div className="flex flex-col justify-between gap-8">
+                  <LeftIsland lg="G1" rg="G6" ts={87} te={90} bs={83} be={86} />
+                  <LeftIsland lg="G2" rg="G5" ts={79} te={82} bs={75} be={78} />
+                  <LeftIsland lg="G3" rg="G4" ts={71} te={74} bs={67} be={70} />
+                </div>
+
+                {/* RIGHT CENTER ISLANDS */}
+                <div className="flex flex-col justify-between gap-8">
+                  <RightIsland lg="G7" rg="G12" ts={20} te={24} bs={25} be={29} />
+                  <RightIsland lg="G8" rg="G11" ts={30} te={34} bs={35} be={39} />
+                  <RightIsland lg="G9" rg="G10" ts={40} te={44} bs={45} be={49} />
                 </div>
 
                 {/* RIGHT FLANK */}
-                <div className="flex flex-col gap-8 items-end">
-                   <div className="flex gap-1.5">{getStalls(87, 90, true).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex gap-1.5">{getStalls(83, 86).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex gap-1.5">{getStalls(79, 82, true).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex gap-1.5">{getStalls(75, 78).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex gap-1.5">{getStalls(71, 74, true).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex gap-1.5">{getStalls(67, 70).map(id => <StallBox key={id} id={id} />)}</div>
-                   <div className="flex flex-wrap gap-1.5 justify-end max-w-[200px]">{getStalls(59, 66, true).map(id => <StallBox key={id} id={id} />)}</div>
+                <div className="flex flex-col justify-between gap-6 items-end">
+                  <StallBox id="P6" type="Platinum" />
+                  <StallBox id="D1" type="Diamond" />
+                  <StallBox id="D2" type="Diamond" />
+                  <StallBox id="D3" type="Diamond" />
+                  <StallBox id="P7" type="Platinum" />
                 </div>
-
               </div>
 
               {/* BOTTOM ROW */}
-              <div className="flex justify-between items-end border-t-2 border-dashed border-slate-200 pt-8 mt-4">
-                <div className="flex gap-4 items-end">
-                  <StallBox id="P7" type="Platinum" customClass="w-48 h-24" />
-                  <div className="flex gap-1.5 flex-wrap max-w-[400px]">
-                    {getStalls(50, 58, true).map(id => <StallBox key={id} id={id} />)}
-                  </div>
-                </div>
-                
-                <div className="bg-slate-800 text-amber-500 border-4 border-amber-500 w-[250px] h-[100px] rounded-2xl flex flex-col items-center justify-center shadow-xl">
-                  <span className="text-xl font-black uppercase tracking-widest">VIP LOUNGE</span>
-                  <span className="text-[8px] uppercase tracking-[0.3em] text-slate-400 mt-1">Authorized Access Only</span>
-                </div>
+              <div className="flex justify-center items-center gap-4 mt-2">
+                 <IconBox />
+                 <div className="flex gap-1 bg-slate-200 p-1">
+                   {getStalls(59, 66, true).map(id => <StallBox key={id} id={id} />)}
+                 </div>
+                 <IconBox />
+                 <div className="flex gap-1 bg-slate-200 p-1">
+                   {getStalls(50, 58, true).map(id => <StallBox key={id} id={id} />)}
+                 </div>
+                 <IconBox />
               </div>
 
            </div>
