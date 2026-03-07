@@ -17,7 +17,7 @@ export default function StallManagementPage() {
   const [companyName, setCompanyName] = useState('')
   const [badgeLimit, setBadgeLimit] = useState('5')
   const [stallType, setStallType] = useState('Silver')
-  const [paymentStatus, setPaymentStatus] = useState('Fully Paid') // NEW STATE
+  const [paymentStatus, setPaymentStatus] = useState('Fully Paid')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function StallManagementPage() {
         company_name: companyName, 
         badge_limit: parseInt(badgeLimit), 
         stall_type: stallType,
-        payment_status: paymentStatus // SAVING NEW STATUS
+        payment_status: paymentStatus 
       }])
 
     if (error) {
@@ -67,7 +67,6 @@ export default function StallManagementPage() {
     setSaving(false)
   }
 
-  // Quick toggle function for the table
   const cyclePaymentStatus = async (id: string, currentStatus: string) => {
     let nextStatus = 'Fully Paid'
     if (currentStatus === 'Fully Paid') nextStatus = 'Advance / On Hold'
@@ -92,7 +91,7 @@ export default function StallManagementPage() {
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-teal-600">
           <div>
             <h1 className="text-3xl font-black uppercase text-teal-700 italic leading-none">Stall Registry</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">GGE 2026 Logistics Hub</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">Updated 4-Tier Layout Support</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-6">← Back</Button>
         </div>
@@ -105,8 +104,8 @@ export default function StallManagementPage() {
             <CardContent className="p-6">
               <form onSubmit={handleAddStall} className="space-y-4">
                 <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Numbers</Label>
-                  <Input placeholder="T-1, T-2" value={stallInput} onChange={(e) => setStallInput(e.target.value)} required className="font-black bg-slate-50 border-0" />
+                  <Label className="font-bold text-[10px] uppercase text-slate-400">Stall Numbers (e.g. 15, G2, P1)</Label>
+                  <Input placeholder="15, G2" value={stallInput} onChange={(e) => setStallInput(e.target.value)} required className="font-black bg-slate-50 border-0" />
                 </div>
                 
                 <div className="space-y-1">
@@ -120,11 +119,13 @@ export default function StallManagementPage() {
                     <Input type="number" value={badgeLimit} onChange={(e) => setBadgeLimit(e.target.value)} required className="font-black bg-slate-50 border-0" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="font-bold text-[10px] uppercase text-slate-400">Tier</Label>
+                    <Label className="font-bold text-[10px] uppercase text-slate-400">Tier / Size</Label>
+                    {/* UPDATED TIERS BASED ON NEW PDF */}
                     <select value={stallType} onChange={(e) => setStallType(e.target.value)} className="w-full bg-slate-50 border-0 font-bold text-[10px] uppercase h-10 rounded-md px-2 outline-none">
                       <option value="Silver">Silver (9m²)</option>
-                      <option value="Gold">Gold (18m²)</option>
-                      <option value="Diamond">Diamond (36m²)</option>
+                      <option value="Gold">Gold (36m²)</option>
+                      <option value="Diamond">Diamond (54m²)</option>
+                      <option value="Platinum">Platinum (72m²)</option>
                     </select>
                   </div>
                 </div>
@@ -155,6 +156,7 @@ export default function StallManagementPage() {
                   <tr>
                     <th className="p-4 px-6">Stalls</th>
                     <th className="p-4">Firm</th>
+                    <th className="p-4">Tier</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-right px-6">Action</th>
                   </tr>
@@ -170,8 +172,8 @@ export default function StallManagementPage() {
                         </div>
                       </td>
                       <td className="p-4 font-bold text-slate-700 uppercase">{s.company_name}</td>
+                      <td className="p-4 font-black text-[9px] uppercase italic text-slate-400">{s.stall_type || 'Silver'}</td>
                       <td className="p-4">
-                        {/* Status Toggle Button */}
                         <button onClick={() => cyclePaymentStatus(s.id, s.payment_status || 'Fully Paid')} className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase shadow-sm transition-all ${
                           s.payment_status === 'Fully Paid' ? 'bg-green-100 text-green-700 border border-green-200' : 
                           s.payment_status === 'Advance / On Hold' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
