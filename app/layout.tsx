@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   description: "Official Lead Manager App",
   manifest: "/manifest.json",
   icons: {
-    icon: '/event-logo.png',   // Changes the standard browser tab icon
-    apple: '/event-logo.png',  // Changes the icon if saved to an Apple iOS home screen
+    icon: '/event-logo.png',   // Standard browser tab icon
+    apple: '/event-logo.png',  // Apple iOS home screen icon
   },
 };
 
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover", 
-  themeColor: "#ffffff",
+  themeColor: "#0b3d41", // Matches your GGE branding theme
 };
 
 export default function RootLayout({
@@ -32,9 +32,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* 'flex flex-col min-h-screen' ensures the footer stays at the bottom */}
       <body className={`${inter.className} bg-slate-50 antialiased flex flex-col min-h-screen`}>
         
+        {/* SERVICE WORKER REGISTRATION: Enables PWA & Offline Support */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+
         <AppHeader />
 
         {/* 'flex-grow' pushes the footer down below the content */}
