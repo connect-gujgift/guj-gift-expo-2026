@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import AppHeader from "@/components/AppHeader"; 
-import AppFooter from "@/components/AppFooter"; // IMPORT THE NEW FOOTER
+import AppFooter from "@/components/AppFooter";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: "Guj Gift Expo 2026",
   description: "Official Lead Manager App",
   manifest: "/manifest.json",
+  icons: {
+    icon: '/event-logo.png',   // Changes the standard browser tab icon
+    apple: '/event-logo.png',  // Changes the icon if saved to an Apple iOS home screen
+  },
 };
 
 export const viewport: Viewport = {
