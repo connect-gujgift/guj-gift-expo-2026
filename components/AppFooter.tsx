@@ -13,7 +13,7 @@ export default function AppFooter() {
         <div className="flex flex-col items-center gap-4">
           {/* IMPORTANT: Change the src below if your file is named differently! */}
           <img 
-            src="/balaji-logo.png" 
+            src="/organizer-logo.png" 
             alt="Shree Balaji Event LLP" 
             className="h-24 w-auto object-contain" 
           />
