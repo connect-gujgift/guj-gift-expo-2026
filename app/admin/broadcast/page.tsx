@@ -12,7 +12,6 @@ export default function BroadcastCenterPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [history, setHistory] = useState<any[]>([])
-
   const [message, setMessage] = useState('')
   const [target, setTarget] = useState<'ALL' | 'VISITORS' | 'EXHIBITORS' | 'STAFF'>('ALL')
 
@@ -50,7 +49,7 @@ export default function BroadcastCenterPage() {
     }, 1500)
   }
 
-  if (loading) return <div className="p-10 text-white">Connecting...</div>
+  if (loading) return <div className="p-10 text-slate-400 font-bold uppercase text-[10px] animate-pulse">Syncing...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-20 font-sans text-slate-900">
@@ -69,21 +68,23 @@ export default function BroadcastCenterPage() {
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Audience</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {['ALL', 'VISITORS', 'EXHIBITORS', 'STAFF'].map((t) => (
-                  <button key={t} onClick={() => setTarget(t as any)} className={`h-12 rounded-xl text-[10px] font-black uppercase border-2 ${target === t ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                  <button key={t} onClick={() => setTarget(t as any)} className={`h-12 rounded-xl text-[10px] font-black uppercase border-2 ${target === t ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                     {t}
                   </button>
                 ))}
               </div>
             </div>
             <form onSubmit={handleBroadcast} className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Message Content</label>
-              <Textarea 
-                placeholder="Type message..." 
-                value={message} 
-                onChange={(e) => setMessage(e.target.value)} 
-                className="min-h-[150px] bg-slate-50 border-0 rounded-[1.5rem] p-6 font-bold"
-              />
-              <Button type="submit" disabled={sending || !message} className="w-full h-16 bg-slate-900 text-white font-black uppercase rounded-2xl shadow-2xl">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Message Content</label>
+                <Textarea 
+                  placeholder="Type message..." 
+                  value={message} 
+                  onChange={(e) => setMessage(e.target.value)} 
+                  className="min-h-[150px] bg-slate-50 border-0 rounded-[1.5rem] p-6 font-bold focus-visible:ring-indigo-500"
+                />
+              </div>
+              <Button type="submit" disabled={sending || !message} className="w-full h-16 bg-slate-900 text-white font-black uppercase rounded-2xl shadow-2xl transition-all active:scale-95">
                 {sending ? 'Broadcasting...' : '🚀 Blast Message'}
               </Button>
             </form>
