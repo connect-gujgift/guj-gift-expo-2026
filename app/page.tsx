@@ -1,25 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
-import { supabase } from '@/lib/supabaseClient'
 
 export default function LandingPage() {
-  const [visitorCount, setVisitorCount] = useState(0)
-
-  useEffect(() => {
-    const fetchCount = async () => {
-      const { count } = await supabase
-        .from('visitors')
-        .select('*', { count: 'exact', head: true })
-      
-      setVisitorCount(count || 0)
-    }
-    fetchCount()
-  }, [])
-
   return (
     <div className="flex flex-col min-h-screen font-sans selection:bg-orange-500 selection:text-white">
       
@@ -39,14 +24,6 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-5xl px-6 space-y-8 animate-in fade-in zoom-in duration-700">
           
-          {/* LIVE COUNTER BADGE - CLEANED UP */}
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-4">
-            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-400">
-              {visitorCount} Registered Industry Leaders
-            </p>
-          </div>
-
           <h1 className="text-5xl md:text-8xl font-black tracking-tighter drop-shadow-2xl leading-none italic uppercase">
             The Future of <br/>
             <span className="text-orange-500">Corporate Gifting</span>

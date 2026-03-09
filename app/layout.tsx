@@ -1,66 +1,30 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import AppHeader from "@/components/AppHeader"; 
-import AppFooter from "@/components/AppFooter";
+'use client'
 
-const inter = Inter({ subsets: ["latin"] });
+import Link from 'next/link'
+import Image from 'next/image'
 
-export const metadata: Metadata = {
-  title: "Guj Gift Expo 2026",
-  description: "Official Lead Manager App",
-  manifest: "/manifest.json",
-  icons: {
-    icon: '/event-logo.png',   // Standard browser tab icon
-    apple: '/event-logo.png',  // Apple iOS home screen icon
-  },
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover", 
-  themeColor: "#0b3d41", // Matches your GGE branding theme
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function AppHeader() {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-slate-50 antialiased flex flex-col min-h-screen`}>
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 print:hidden">
+      <div className="max-w-7xl mx-auto px-4 h-28 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="relative h-20 w-64">
+            <Image 
+              src="/event-logo.png" 
+              alt="Guj Gift Expo 2026" 
+              fill
+              className="object-contain object-left"
+              priority
+            />
+          </div>
+        </Link>
         
-        {/* SERVICE WORKER REGISTRATION: Enables PWA & Offline Support */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                  }, function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />
-
-        <AppHeader />
-
-        {/* 'flex-grow' pushes the footer down below the content */}
-        <main className="flex-grow">
-          {children}
-        </main>
-
-        <AppFooter />
-
-      </body>
-    </html>
-  );
+        <nav className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+           <Link href="/floor-plan" className="hover:text-orange-500 transition-colors">Stall Map</Link>
+           <Link href="/register" className="hover:text-orange-500 transition-colors">Visitor Registration</Link>
+           <Link href="/login" className="bg-slate-900 text-white px-8 py-4 rounded-xl hover:bg-orange-600 transition-all shadow-md">Portal Login</Link>
+        </nav>
+      </div>
+    </header>
+  )
 }
