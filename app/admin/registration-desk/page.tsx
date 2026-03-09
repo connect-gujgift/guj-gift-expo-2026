@@ -18,7 +18,6 @@ function DeskContent() {
     staff: any[]
   }>({ visitors: [], exhibitors: [], staff: [] })
   
-  // State for the Instant Print Mode
   const [printTarget, setPrintTarget] = useState<any | null>(null)
   const [printType, setPrintType] = useState<string>('VISITOR')
 
@@ -26,14 +25,12 @@ function DeskContent() {
     checkAdmin()
     fetchRecentData()
 
-    // Auto-refresh the live feed every 30 seconds if not actively searching
     const interval = setInterval(() => {
       if (isLive && !searchTerm) {
         fetchRecentData()
       }
     }, 30000)
 
-    // Reset screen after print dialog closes
     const handleAfterPrint = () => setPrintTarget(null)
     window.addEventListener('afterprint', handleAfterPrint)
 
@@ -50,7 +47,6 @@ function DeskContent() {
     }
   }
 
-  // Live Feed: Fetch the 8 newest registrations
   const fetchRecentData = async () => {
     const { data: recentVisitors } = await supabase
       .from('visitors')
@@ -63,7 +59,6 @@ function DeskContent() {
     }
   }
 
-  // Unified Cross-Table Search
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchTerm.trim()) {
@@ -85,59 +80,78 @@ function DeskContent() {
     setLoading(false)
   }
 
-  // Trigger Instant Print Mode
   const handlePrint = (person: any, type: string) => {
     setPrintType(type.toUpperCase())
     setPrintTarget(person)
-    // Small delay allows React to render the hidden print div before calling the browser print dialog
+    // 500ms delay gives the QR code image time to fully download before printing
     setTimeout(() => {
       window.print()
-    }, 150)
+    }, 500)
   }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       
       {/* ------------------------------------------------------------------------- */}
-      {/* INSTANT PRINT LAYOUT (Hidden on screens, visible only to thermal printer) */}
-      {/* TAILORED FOR PRE-PRINTED BADGES: Only dynamic data is rendered. */}
+      {/* INSTANT PRINT LAYOUT - BULLETPROOF ISOLATION */}
       {/* ------------------------------------------------------------------------- */}
       {printTarget && (
-        <div className="hidden print:flex flex-col w-[4in] h-[6in] bg-white mx-auto relative items-center justify-center">
-          
-          {/* We assume the top 1.5 to 2 inches of your physical badge contains the pre-printed GGE Logo.
-              This mt-[1.5in] pushes the dynamic text down into the blank white space. */}
-          <div className="mt-[1.5in] w-full flex flex-col items-center justify-center text-center space-y-4 px-4">
-             
-             {/* Badge Category (Visitor, Exhibitor, Staff) */}
-             <div className="border-2 border-black text-black px-6 py-1 rounded-full text-sm font-black uppercase tracking-[0.3em] mb-2">
-               {printType} {printTarget.is_vip ? '★ VIP ★' : ''}
-             </div>
-             
-             {/* Dynamic User Details */}
-             <h2 className="text-3xl font-black uppercase leading-tight text-black break-words w-full">
-               {printTarget.full_name}
-             </h2>
-             <div>
+        <>
+          <style type="text/css" media="print">
+            {`
+              /* Force the printer size and remove default browser margins */
+              @page { size: 4in 6in; margin: 0; }
+              
+              /* HIDE EVERYTHING ON THE WEBSITE (including AppHeader and AppFooter) */
+              body * { visibility: hidden !important; }
+              
+              /* SHOW ONLY THE PRINT AREA */
+              #print-area, #print-area * { visibility: visible !important; }
+              
+              /* Position the print area strictly at the top left of the paper */
+              #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 4in;
+                height: 6in;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                /* PUSHES TEXT DOWN INTO THE BLANK SPACE BELOW YOUR PRE-PRINTED LOGO */
+                padding-top: 1.8in; 
+                background-color: white;
+                margin: 0;
+              }
+            `}
+          </style>
+
+          <div id="print-area" className="hidden print:flex flex-col z-50 bg-white">
+            <div className="w-full flex flex-col items-center text-center px-4">
+               
+               <h2 className="text-3xl font-black uppercase leading-tight text-black break-words w-full">
+                 {printTarget.full_name}
+               </h2>
+               
                <p className="text-xl font-bold text-black uppercase mt-1">
                  {printTarget.company_name || 'Independent'}
                </p>
+               
                <p className="text-sm font-bold text-gray-800 uppercase tracking-widest mt-1">
                  {printTarget.designation || (printType === 'EXHIBITOR' ? `Stall ${printTarget.stall_number}` : 'Attendee')}
                </p>
-             </div>
 
-             {/* Dynamic QR Code */}
-             <div className="mt-6">
-               <img 
-                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${printTarget.id}&margin=0`} 
-                 alt="Scan QR" 
-                 className="w-32 h-32"
-               />
-             </div>
-             
+               <div className="mt-6">
+                 <img 
+                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${printTarget.id}&margin=0`} 
+                   alt="QR Code" 
+                   className="w-32 h-32"
+                 />
+               </div>
+
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ------------------------------------------------------------------------- */}
@@ -145,7 +159,6 @@ function DeskContent() {
       {/* ------------------------------------------------------------------------- */}
       <div className="p-4 pb-20 max-w-5xl mx-auto space-y-6 print:hidden">
         
-        {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border-b-4 border-blue-600 gap-4">
           <div>
             <h1 className="text-3xl font-black uppercase text-blue-900 tracking-tighter italic leading-none">Registration Desk</h1>
@@ -164,7 +177,6 @@ function DeskContent() {
           </div>
         </div>
 
-        {/* UNIFIED SEARCH */}
         <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden">
           <CardContent className="p-6 bg-[#0b3d41]">
             <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
@@ -182,7 +194,6 @@ function DeskContent() {
           </CardContent>
         </Card>
 
-        {/* RESULTS FEED */}
         <div className="space-y-4">
           {!searchTerm && (
             <div className="flex items-center justify-between px-2">
@@ -216,18 +227,13 @@ function DeskContent() {
   )
 }
 
-// Sub-component for rendering the result rows (TypeScript Error Fixed)
 function ResultCard({ data, type, onPrint }: { data: any, type: string, onPrint: () => void }) {
   const isVip = data.is_vip
-  
-  // Explicitly mapping the themes to fix the TypeScript error
   const themes = {
     visitor: { bg: 'bg-orange-500', icon: '👤', label: 'VISITOR' },
     exhibitor: { bg: 'bg-[#0b3d41]', icon: '🎪', label: 'EXHIBITOR' },
     staff: { bg: 'bg-amber-500', icon: '👷', label: 'STAFF' }
   }
-  
-  // Safely selecting the theme with a fallback
   const theme = themes[type as keyof typeof themes] || themes.visitor
   
   return (
@@ -254,7 +260,6 @@ function ResultCard({ data, type, onPrint }: { data: any, type: string, onPrint:
   )
 }
 
-// Suspense wrapper required by Next.js for client components doing complex data fetching
 export default function RegistrationDeskPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic animate-pulse">Syncing G1 Gate...</div>}>
