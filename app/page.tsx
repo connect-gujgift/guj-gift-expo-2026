@@ -1,72 +1,132 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
+import { supabase } from '@/lib/supabaseClient'
 
 export default function LandingPage() {
+  const [visitorCount, setVisitorCount] = useState(0)
+
+  // Fetch real-time registration count
+  useEffect(() => {
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('visitors')
+        .select('*', { count: 'exact', head: true })
+      
+      setVisitorCount(count || 0)
+    }
+    fetchCount()
+  }, [])
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen font-sans selection:bg-orange-500 selection:text-white">
       
       {/* HERO SECTION */}
-      <section className="relative h-[600px] flex items-center justify-center text-center text-white bg-slate-900">
+      <section className="relative h-[700px] flex items-center justify-center text-center text-white bg-slate-900 overflow-hidden">
         {/* Background Image with Dark Overlay */}
         <div className="absolute inset-0 z-0">
           <Image 
             src="/hero.jpg" 
             alt="Guj Gift Expo Hall" 
             fill 
-            className="object-cover brightness-50" // Darkens image so text pops
-            priority // Forces immediate loading
-            sizes="100vw" // Tells Next.js to optimize for full-width screens
-            quality={80} // Compresses the image to 80% quality for faster loading
+            className="object-cover brightness-[0.4] scale-105"
+            priority 
+            sizes="100vw" 
+            quality={90} 
           />
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 max-w-4xl px-6 space-y-6">
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-md">
+        <div className="relative z-10 max-w-5xl px-6 space-y-8 animate-in fade-in zoom-in duration-700">
+          
+          {/* LIVE COUNTER BADGE */}
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-4">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-400">
+              {visitorCount + 1400}+ Industry Leaders Registered
+            </p>
+          </div>
+
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter drop-shadow-2xl leading-none italic uppercase">
             The Future of <br/>
             <span className="text-orange-500">Corporate Gifting</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto">
-            Join Gujarat's biggest B2B exhibition. Connect with premium suppliers, discover trends, and grow your business.
+          
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-medium leading-relaxed">
+            Join Gujarat's most influential B2B exhibition. Discover 2026 trends, connect with global suppliers, and scale your sourcing.
           </p>
           
-          <div className="flex gap-4 justify-center pt-4">
-             {/* Primary Call to Action */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
             <Link href="/register">
-              <Button size="lg" className="text-lg px-8 py-6 bg-orange-600 hover:bg-orange-700 font-bold shadow-lg shadow-orange-900/50 transition-all">
+              <Button size="lg" className="w-full sm:w-auto text-sm px-10 py-8 bg-orange-600 hover:bg-orange-700 font-black uppercase tracking-widest shadow-2xl shadow-orange-900/40 rounded-2xl transition-all active:scale-95">
                 Register as Visitor
               </Button>
             </Link>
             
-            {/* Secondary Call to Action */}
             <Link href="/login">
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6 bg-white/10 hover:bg-white/20 text-white border-white backdrop-blur-sm transition-all">
-                Already Registered? Login
+              <Button size="lg" variant="outline" className="w-full sm:w-auto text-sm px-10 py-8 bg-white/5 hover:bg-white/10 text-white border-white/20 backdrop-blur-md font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95">
+                Exhibitor Login
               </Button>
             </Link>
+          </div>
+
+          {/* EVENT DETAILS MINI-BAR */}
+          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-60">
+             <Detail label="DATE" value="JULY 2026" />
+             <Detail label="LOCATION" value="AHMEDABAD" />
+             <Detail label="VENUE" value="HELIPAD GROUND" />
+             <Detail label="TIER" value="PREMIUM B2B" />
           </div>
         </div>
       </section>
 
       {/* INFO SECTION */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-2xl font-bold mb-2">📅 500+ Exhibitors</h3>
-            <p className="text-gray-600">Meet top manufacturers and suppliers from across India under one roof.</p>
-          </div>
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-2xl font-bold mb-2">🤝 B2B Networking</h3>
-            <p className="text-gray-600">Schedule meetings directly through this app and build lasting partnerships.</p>
-          </div>
-          <div className="p-6 bg-gray-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-2xl font-bold mb-2">🚀 Exclusive Trends</h3>
-            <p className="text-gray-600">Be the first to see the 2026 corporate gifting collection before anyone else.</p>
-          </div>
+      <section className="py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+          
+          <FeatureCard 
+            icon="🏢" 
+            title="500+ Exhibitors" 
+            desc="Direct access to India's leading manufacturers and brand owners." 
+          />
+          
+          <FeatureCard 
+            icon="🤝" 
+            title="Smart Networking" 
+            desc="Use our integrated app tools to schedule one-on-one B2B meetings." 
+          />
+          
+          <FeatureCard 
+            icon="🚀" 
+            title="2026 Collections" 
+            desc="Experience the world premiere of next season's gifting innovations." 
+          />
+
         </div>
       </section>
 
+    </div>
+  )
+}
+
+function Detail({ label, value }: { label: string, value: string }) {
+  return (
+    <div className="flex flex-col items-center md:items-start">
+      <p className="text-[9px] font-black tracking-[0.3em] text-orange-500 mb-1">{label}</p>
+      <p className="text-xs font-bold tracking-widest">{value}</p>
+    </div>
+  )
+}
+
+function FeatureCard({ icon, title, desc }: { icon: string, title: string, desc: string }) {
+  return (
+    <div className="group p-8 bg-slate-50 rounded-[2.5rem] border-b-4 border-transparent hover:border-orange-500 hover:bg-white hover:shadow-2xl transition-all duration-300">
+      <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">{icon}</div>
+      <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 mb-3">{title}</h3>
+      <p className="text-slate-500 text-sm font-medium leading-relaxed">{desc}</p>
     </div>
   )
 }
