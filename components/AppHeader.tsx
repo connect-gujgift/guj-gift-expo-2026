@@ -5,17 +5,16 @@ import Image from 'next/image'
 
 export default function AppHeader() {
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 print:hidden">
-      <div className="max-w-7xl mx-auto px-4 h-32 flex items-center justify-between">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 print:hidden overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 h-28 flex items-center justify-between">
         <Link href="/" className="flex items-center">
-          {/* logo container with enough height to prevent clipping */}
-          <div className="relative w-[300px] h-[100px] flex items-center">
+          {/* This relative box is the strict boundary. The logo cannot escape it. */}
+          <div className="relative h-20 w-[260px]">
             <Image 
               src="/event-logo.png" 
               alt="Guj Gift Expo 2026" 
-              width={280} 
-              height={80}
-              className="object-contain"
+              fill
+              className="object-contain object-left"
               priority
             />
           </div>
