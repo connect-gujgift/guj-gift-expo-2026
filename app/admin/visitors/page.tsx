@@ -18,9 +18,9 @@ export default function VisitorManagementPage() {
     fetchVisitors()
   }, [])
 
+  // Security Check: Only Super Admin can access
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    // Secure to Super Admin
     if (!user || user.email !== 'maulikshah.13@gmail.com') {
       router.push('/login')
     } else {
@@ -28,6 +28,7 @@ export default function VisitorManagementPage() {
     }
   }
 
+  // Fetch all registered visitors
   const fetchVisitors = async () => {
     const { data, error } = await supabase
       .from('visitors')
@@ -37,26 +38,28 @@ export default function VisitorManagementPage() {
     if (!error) setVisitors(data || [])
   }
 
+  // Delete a visitor
   const deleteVisitor = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to completely remove ${name} from the registry?`)) return
+    if (!confirm(`Are you sure you want to permanently remove ${name} from the registry?`)) return
     const { error } = await supabase.from('visitors').delete().eq('id', id)
     if (!error) fetchVisitors()
   }
 
-  // Filter visitors based on search query
+  // Upgraded Live Search Filter (Now includes City)
   const filteredVisitors = visitors.filter(v => {
     const search = searchQuery.toLowerCase()
     return (
       (v.full_name && v.full_name.toLowerCase().includes(search)) ||
       (v.company_name && v.company_name.toLowerCase().includes(search)) ||
       (v.phone && v.phone.includes(search)) ||
-      (v.email && v.email.toLowerCase().includes(search))
+      (v.email && v.email.toLowerCase().includes(search)) ||
+      (v.city && v.city.toLowerCase().includes(search))
     )
   })
 
-  // Simple CSV Export Function
+  // Professional CSV Export for Excel
   const exportToCSV = () => {
-    const headers = ['Name', 'Company', 'Designation', 'Phone', 'Email', 'City', 'Registered On']
+    const headers = ['Full Name', 'Company Name', 'Designation', 'Phone Number', 'Email Address', 'City', 'Registration Date']
     const csvContent = [
       headers.join(','),
       ...filteredVisitors.map(v => 
@@ -67,37 +70,37 @@ export default function VisitorManagementPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `GGE_Visitors_${new Date().toLocaleDateString()}.csv`
+    link.download = `GGE_Visitors_Export_${new Date().toLocaleDateString()}.csv`
     link.click()
   }
 
-  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm bg-slate-50 min-h-screen">Verifying Clearance...</div>
+  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm bg-slate-50 min-h-screen">Authorizing Access...</div>
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-20 font-sans text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* HEADER WITH BACK BUTTON */}
+        {/* HEADER */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-[2rem] shadow-sm gap-4 border-b-4 border-blue-500">
           <div>
             <h1 className="text-3xl font-black uppercase text-blue-600 tracking-tighter italic leading-none">Visitor Dept.</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">Attendee Master Database</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">Master Attendee Database</p>
           </div>
           <div className="flex gap-3 w-full md:w-auto">
-             <Button onClick={exportToCSV} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-md">
-               📥 Export CSV
+             <Button onClick={exportToCSV} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-md transition-all">
+               📥 Export to Excel
              </Button>
              <Button variant="outline" onClick={() => router.push('/admin')} className="w-full md:w-auto font-bold border-2 text-[10px] uppercase rounded-xl px-6">
-               ← Hub
+               ← Back to Hub
              </Button>
           </div>
         </div>
 
-        {/* SEARCH AND FILTER BAR */}
+        {/* LIVE SEARCH BAR */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center">
            <span className="text-xl ml-2 mr-4 opacity-50">🔍</span>
            <Input 
-             placeholder="Search by name, company, phone, or email..." 
+             placeholder="Search attendees by name, company, phone, email, or city..." 
              value={searchQuery}
              onChange={(e) => setSearchQuery(e.target.value)}
              className="border-0 shadow-none text-sm font-bold bg-transparent focus-visible:ring-0 px-0 h-10 w-full"
@@ -107,14 +110,16 @@ export default function VisitorManagementPage() {
            </div>
         </div>
 
-        {/* VISITOR DATA TABLE */}
-        <Card className="border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden">
+        {/* MASTER DATA TABLE */}
+        <Card className="border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-800 text-white p-6">
-             <CardTitle className="text-lg font-black uppercase tracking-tight">Registered Attendees</CardTitle>
+             <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+               <span>📋</span> Registered Attendees
+             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-auto bg-white">
+          <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 text-slate-500 font-black uppercase text-[9px] sticky top-0 z-10 shadow-sm">
+              <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="p-4 px-6">Profile</th>
                   <th className="p-4">Firm / Designation</th>
@@ -123,28 +128,28 @@ export default function VisitorManagementPage() {
                   <th className="p-4 text-right px-6">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200 bg-white">
                 {filteredVisitors.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={v.id} className="hover:bg-blue-50 transition-colors">
                     <td className="p-4 px-6">
                       <p className="font-black text-blue-700 uppercase text-sm">{v.full_name}</p>
-                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">Joined: {new Date(v.created_at).toLocaleDateString()}</p>
+                      <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Joined: {new Date(v.created_at).toLocaleDateString()}</p>
                     </td>
                     <td className="p-4">
                       <p className="font-bold text-slate-800 uppercase">{v.company_name || 'N/A'}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">{v.designation || 'Visitor'}</p>
+                      <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">{v.designation || 'Visitor'}</p>
                     </td>
                     <td className="p-4">
                       <p className="font-bold text-slate-700">{v.phone}</p>
-                      <p className="text-[10px] text-slate-500">{v.email || 'No email'}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{v.email || 'No email provided'}</p>
                     </td>
                     <td className="p-4">
-                       <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">
+                       <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full text-[9px] font-black uppercase border border-slate-200">
                          {v.city || 'Unknown'}
                        </span>
                     </td>
                     <td className="p-4 text-right px-6">
-                      <Button variant="ghost" size="sm" onClick={() => deleteVisitor(v.id, v.full_name)} className="h-7 text-slate-300 hover:text-red-500 font-black text-[9px] uppercase hover:bg-red-50">
+                      <Button variant="ghost" size="sm" onClick={() => deleteVisitor(v.id, v.full_name)} className="h-8 text-slate-400 hover:text-red-600 font-black text-[9px] uppercase hover:bg-red-50 transition-all rounded-lg">
                         Remove
                       </Button>
                     </td>
@@ -152,8 +157,8 @@ export default function VisitorManagementPage() {
                 ))}
                 {filteredVisitors.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic">
-                      No visitors found matching your search.
+                    <td colSpan={5} className="p-12 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic bg-slate-50">
+                      No visitors found matching your criteria.
                     </td>
                   </tr>
                 )}
