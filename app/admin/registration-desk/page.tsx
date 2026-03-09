@@ -83,73 +83,82 @@ function DeskContent() {
   const handlePrint = (person: any, type: string) => {
     setPrintType(type.toUpperCase())
     setPrintTarget(person)
-    // 500ms delay gives the QR code image time to fully download before printing
+    
+    // We do NOT call window.print() immediately here. 
+    // We wait for the image to load. But we add a 2-second fallback just in case the internet is slow.
     setTimeout(() => {
-      window.print()
-    }, 500)
+      if (document.getElementById('print-area')) {
+        window.print();
+      }
+    }, 2000)
   }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       
       {/* ------------------------------------------------------------------------- */}
-      {/* INSTANT PRINT LAYOUT - BULLETPROOF ISOLATION */}
+      {/* INSTANT PRINT LAYOUT - FOR PRE-PRINTED BADGES */}
       {/* ------------------------------------------------------------------------- */}
       {printTarget && (
         <>
           <style type="text/css" media="print">
             {`
-              /* Force the printer size and remove default browser margins */
+              /* Force the printer size to 4x6 inches */
               @page { size: 4in 6in; margin: 0; }
               
-              /* HIDE EVERYTHING ON THE WEBSITE (including AppHeader and AppFooter) */
-              body * { visibility: hidden !important; }
+              /* HIDE ALL WEBSITE ELEMENTS (Header, Footer, Sidebars) */
+              body * { visibility: hidden; }
+              header, footer, nav { display: none !important; }
               
               /* SHOW ONLY THE PRINT AREA */
-              #print-area, #print-area * { visibility: visible !important; }
+              #print-area, #print-area * { visibility: visible; }
               
-              /* Position the print area strictly at the top left of the paper */
+              /* Lock the print area to the top left of the paper */
               #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 4in;
-                height: 6in;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                /* PUSHES TEXT DOWN INTO THE BLANK SPACE BELOW YOUR PRE-PRINTED LOGO */
-                padding-top: 1.8in; 
-                background-color: white;
-                margin: 0;
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 4in !important;
+                height: 6in !important;
+                background-color: white !important;
+                margin: 0 !important;
+                z-index: 999999 !important;
+                padding-top: 1.5in !important; /* Pushes text below your pre-printed logo */
               }
             `}
           </style>
 
-          <div id="print-area" className="hidden print:flex flex-col z-50 bg-white">
-            <div className="w-full flex flex-col items-center text-center px-4">
+          <div id="print-area" className="hidden print:flex flex-col items-center w-full text-center px-4">
                
-               <h2 className="text-3xl font-black uppercase leading-tight text-black break-words w-full">
+               <h2 className="text-3xl font-black uppercase leading-tight text-black break-words w-full m-0">
                  {printTarget.full_name}
                </h2>
                
-               <p className="text-xl font-bold text-black uppercase mt-1">
+               <p className="text-xl font-bold text-black uppercase mt-1 mb-0">
                  {printTarget.company_name || 'Independent'}
                </p>
                
-               <p className="text-sm font-bold text-gray-800 uppercase tracking-widest mt-1">
+               <p className="text-sm font-bold text-gray-800 uppercase tracking-widest mt-1 mb-0">
                  {printTarget.designation || (printType === 'EXHIBITOR' ? `Stall ${printTarget.stall_number}` : 'Attendee')}
                </p>
 
-               <div className="mt-6">
-                 <img 
-                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${printTarget.id}&margin=0`} 
-                   alt="QR Code" 
-                   className="w-32 h-32"
-                 />
-               </div>
+               {/* Visitor Number (Using Phone) */}
+               <p className="text-sm font-black text-gray-600 uppercase tracking-widest mt-1 mb-0">
+                 NO: {printTarget.phone}
+               </p>
 
-            </div>
+               {/* Dynamic QR Code */}
+               <img 
+                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${printTarget.id}&margin=0`} 
+                 alt="QR Code" 
+                 width="128"
+                 height="128"
+                 className="mt-6 mx-auto"
+                 onLoad={() => {
+                   // Only trigger print once the image is 100% loaded
+                   setTimeout(() => window.print(), 100)
+                 }}
+               />
           </div>
         </>
       )}
