@@ -4,45 +4,53 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 
 function DeskContent() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isLive, setIsLive] = useState(true) // Controls the auto-refresh
+  const [isLive, setIsLive] = useState(true)
   const [results, setResults] = useState<{
     visitors: any[],
     exhibitors: any[],
     staff: any[]
   }>({ visitors: [], exhibitors: [], staff: [] })
+  
+  // State for the Instant Print Mode
+  const [printTarget, setPrintTarget] = useState<any | null>(null)
+  const [printType, setPrintType] = useState<string>('VISITOR')
 
   useEffect(() => {
     checkAdmin()
     fetchRecentData()
 
-    // --- AUTO-REFRESH LOGIC (Every 30 Seconds) ---
-    // This allows the VIP counter to see new pre-registrations instantly
+    // Auto-refresh the live feed every 30 seconds if not actively searching
     const interval = setInterval(() => {
       if (isLive && !searchTerm) {
         fetchRecentData()
       }
     }, 30000)
 
-    return () => clearInterval(interval)
+    // Reset screen after print dialog closes
+    const handleAfterPrint = () => setPrintTarget(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
   }, [isLive, searchTerm])
 
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    // Restricting access to Super Admin
     if (!user || user.email !== 'maulikshah.13@gmail.com') {
       router.push('/login')
     }
   }
 
-  // Fetches the latest 8 registrations for the "Live Feed"
+  // Live Feed: Fetch the 8 newest registrations
   const fetchRecentData = async () => {
     const { data: recentVisitors } = await supabase
       .from('visitors')
@@ -55,6 +63,7 @@ function DeskContent() {
     }
   }
 
+  // Unified Cross-Table Search
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchTerm.trim()) {
@@ -63,7 +72,6 @@ function DeskContent() {
     }
     setLoading(true)
 
-    // Cross-table search for Name, Phone, or Email
     const [visRes, exhRes] = await Promise.all([
       supabase.from('visitors').select('*').or(`full_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`),
       supabase.from('exhibitors').select('*').or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
@@ -77,98 +85,129 @@ function DeskContent() {
     setLoading(false)
   }
 
-  const printBadge = (id: string, type: string) => {
-    // Opens the specialized printing template in a new tab
-    window.open(`/badge/print?id=${id}&type=${type}`, '_blank')
+  // Trigger Instant Print Mode
+  const handlePrint = (person: any, type: string) => {
+    setPrintType(type.toUpperCase())
+    setPrintTarget(person)
+    // Small delay allows React to render the hidden print div before calling the browser print dialog
+    setTimeout(() => {
+      window.print()
+    }, 150)
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-20 font-sans text-slate-900">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      
+      {/* ------------------------------------------------------------------------- */}
+      {/* INSTANT PRINT LAYOUT (Hidden on screens, visible only to thermal printer) */}
+      {/* TAILORED FOR PRE-PRINTED BADGES: Only dynamic data is rendered. */}
+      {/* ------------------------------------------------------------------------- */}
+      {printTarget && (
+        <div className="hidden print:flex flex-col w-[4in] h-[6in] bg-white mx-auto relative items-center justify-center">
+          
+          {/* We assume the top 1.5 to 2 inches of your physical badge contains the pre-printed GGE Logo.
+              This mt-[1.5in] pushes the dynamic text down into the blank white space. */}
+          <div className="mt-[1.5in] w-full flex flex-col items-center justify-center text-center space-y-4 px-4">
+             
+             {/* Badge Category (Visitor, Exhibitor, Staff) */}
+             <div className="border-2 border-black text-black px-6 py-1 rounded-full text-sm font-black uppercase tracking-[0.3em] mb-2">
+               {printType} {printTarget.is_vip ? '★ VIP ★' : ''}
+             </div>
+             
+             {/* Dynamic User Details */}
+             <h2 className="text-3xl font-black uppercase leading-tight text-black break-words w-full">
+               {printTarget.full_name}
+             </h2>
+             <div>
+               <p className="text-xl font-bold text-black uppercase mt-1">
+                 {printTarget.company_name || 'Independent'}
+               </p>
+               <p className="text-sm font-bold text-gray-800 uppercase tracking-widest mt-1">
+                 {printTarget.designation || (printType === 'EXHIBITOR' ? `Stall ${printTarget.stall_number}` : 'Attendee')}
+               </p>
+             </div>
+
+             {/* Dynamic QR Code */}
+             <div className="mt-6">
+               <img 
+                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${printTarget.id}&margin=0`} 
+                 alt="Scan QR" 
+                 className="w-32 h-32"
+               />
+             </div>
+             
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------------- */}
+      {/* SCREEN UI (Hidden during printing) */}
+      {/* ------------------------------------------------------------------------- */}
+      <div className="p-4 pb-20 max-w-5xl mx-auto space-y-6 print:hidden">
         
-        {/* HEADER SECTION */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border-b-4 border-blue-600">
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border-b-4 border-blue-600 gap-4">
           <div>
-            <h1 className="text-2xl font-black uppercase text-blue-900 italic tracking-tight">Registration Desk</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <h1 className="text-3xl font-black uppercase text-blue-900 tracking-tighter italic leading-none">Registration Desk</h1>
+            <div className="flex items-center gap-2 mt-2">
                <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`}></span>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                 {isLive ? 'Live Sync Active' : 'Auto-Refresh Paused'}
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
+                 {isLive ? 'G1 Gate • Live Sync Active' : 'Auto-Refresh Paused'}
                </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsLive(!isLive)} className="text-[9px] font-black uppercase rounded-xl border-2">
-               {isLive ? 'Pause' : 'Resume'}
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button variant="outline" size="sm" onClick={() => setIsLive(!isLive)} className="text-[9px] font-black uppercase rounded-xl border-2 h-10 w-full md:w-auto">
+               {isLive ? 'Pause Sync' : 'Resume Sync'}
             </Button>
-            <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-4">← Back</Button>
+            <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-4 h-10 w-full md:w-auto">← Hub</Button>
           </div>
         </div>
 
-        {/* UNIFIED SEARCH BAR */}
-        <Card className="border-0 shadow-lg rounded-[1.5rem] overflow-hidden">
+        {/* UNIFIED SEARCH */}
+        <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden">
           <CardContent className="p-6 bg-[#0b3d41]">
             <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
               <Input 
-                placeholder="Search Visitor Phone or Exhibitor Email..." 
+                autoFocus
+                placeholder="Search Attendee Phone, Name, or Email..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-14 bg-white/10 border-0 text-white placeholder:text-white/40 font-bold px-6 rounded-xl focus-visible:ring-0"
+                className="h-14 bg-white/10 border-0 text-white placeholder:text-white/50 font-bold px-6 rounded-xl focus-visible:ring-0 text-lg"
               />
-              <Button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-600 h-14 px-10 rounded-xl font-black uppercase text-[10px] text-white">
-                {loading ? 'Searching...' : 'Find User'}
+              <Button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-600 h-14 px-10 rounded-xl font-black uppercase tracking-widest text-[10px] text-white shadow-md">
+                {loading ? 'Searching...' : 'Find Pass'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* LIVE RESULTS FEED */}
+        {/* RESULTS FEED */}
         <div className="space-y-4">
           {!searchTerm && (
             <div className="flex items-center justify-between px-2">
-              <h3 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Recent Registrations</h3>
+              <h3 className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Recent Pre-Registrations</h3>
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest italic">Updates every 30s</p>
             </div>
           )}
           
-          {/* Display Visitors with VIP Logic */}
           {results.visitors.map(v => (
-            <ResultCard 
-              key={v.id} 
-              name={v.full_name} 
-              info={v.company_name} 
-              subInfo={v.phone} 
-              type="visitor" 
-              isVip={v.is_vip} // Specifically highlights VIP Pre-registrations
-              onPrint={() => printBadge(v.id, 'visitor')} 
-            />
+            <ResultCard key={v.id} data={v} type="visitor" onPrint={() => handlePrint(v, 'visitor')} />
           ))}
 
           {results.exhibitors.map(e => (
-            <ResultCard 
-              key={e.id} 
-              name={e.full_name} 
-              info={e.company_name} 
-              subInfo={`Stall: ${e.stall_number}`} 
-              type="exhibitor" 
-              onPrint={() => printBadge(e.id, 'exhibitor')} 
-            />
+            <ResultCard key={e.id} data={e} type="exhibitor" onPrint={() => handlePrint(e, 'exhibitor')} />
           ))}
 
           {results.staff.map(s => (
-            <ResultCard 
-              key={s.id} 
-              name={s.full_name} 
-              info={s.company_name} 
-              subInfo="Management Team" 
-              type="staff" 
-              onPrint={() => printBadge(s.id, 'staff')} 
-            />
+            <ResultCard key={s.id} data={s} type="staff" onPrint={() => handlePrint(s, 'staff')} />
           ))}
 
           {searchTerm && !loading && results.visitors.length === 0 && results.exhibitors.length === 0 && results.staff.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
-               <p className="text-slate-400 font-bold uppercase text-xs tracking-widest italic">No matching records found.</p>
+            <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+               <span className="text-4xl block mb-2">🤷‍♂️</span>
+               <h3 className="text-lg font-black uppercase text-slate-800">No Records Found</h3>
+               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Verify the phone number or ask them to register online.</p>
             </div>
           )}
         </div>
@@ -177,39 +216,48 @@ function DeskContent() {
   )
 }
 
-// Sub-component for individual search result rows
-function ResultCard({ name, info, subInfo, type, isVip, onPrint }: any) {
-  const colors: any = { visitor: 'bg-orange-500', exhibitor: 'bg-[#0b3d41]', staff: 'bg-blue-600' }
+// Sub-component for rendering the result rows (TypeScript Error Fixed)
+function ResultCard({ data, type, onPrint }: { data: any, type: string, onPrint: () => void }) {
+  const isVip = data.is_vip
+  
+  // Explicitly mapping the themes to fix the TypeScript error
+  const themes = {
+    visitor: { bg: 'bg-orange-500', icon: '👤', label: 'VISITOR' },
+    exhibitor: { bg: 'bg-[#0b3d41]', icon: '🎪', label: 'EXHIBITOR' },
+    staff: { bg: 'bg-amber-500', icon: '👷', label: 'STAFF' }
+  }
+  
+  // Safely selecting the theme with a fallback
+  const theme = themes[type as keyof typeof themes] || themes.visitor
   
   return (
-    <Card className={`border-0 shadow-sm overflow-hidden rounded-2xl bg-white hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-2 ${isVip ? 'border-l-8 border-teal-500 ring-2 ring-teal-500/10' : ''}`}>
-      <div className="flex items-center p-4 gap-4">
-        <div className={`w-12 h-12 ${isVip ? 'bg-teal-600' : colors[type]} rounded-xl flex items-center justify-center text-white text-xl shadow-inner`}>
-          {isVip ? '🌟' : (type === 'visitor' ? '👤' : type === 'exhibitor' ? '🎪' : '🛡️')}
+    <Card className={`border-0 shadow-sm overflow-hidden rounded-[1.5rem] bg-white hover:shadow-md transition-all ${isVip ? 'border-l-8 border-teal-500 ring-2 ring-teal-500/10' : ''}`}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center p-5 gap-4">
+        <div className={`w-14 h-14 ${isVip ? 'bg-teal-600' : theme.bg} rounded-2xl flex shrink-0 items-center justify-center text-white text-2xl shadow-inner`}>
+          {isVip ? '🌟' : theme.icon}
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="font-black uppercase text-slate-900 tracking-tight leading-none">{name}</h4>
-            {isVip && <Badge className="bg-teal-600 text-[7px] h-4 font-black uppercase tracking-widest">VIP PASS</Badge>}
-            <Badge className={`${colors[type]} text-[7px] h-4 font-black uppercase tracking-widest`}>{type.toUpperCase()}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-xl font-black uppercase text-slate-900 tracking-tight leading-none">{data.full_name}</h4>
+            {isVip && <span className="bg-teal-600 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">VIP PASS</span>}
+            <span className={`${theme.bg} text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest`}>{theme.label}</span>
           </div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase mt-1 italic tracking-tight">{info} • {subInfo}</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase mt-1.5 tracking-widest">
+            {data.company_name || 'Independent'} • {type === 'exhibitor' ? `Stall: ${data.stall_number}` : data.phone}
+          </p>
         </div>
-        <Button 
-          onClick={onPrint} 
-          className={`${isVip ? 'bg-teal-600' : 'bg-slate-900'} hover:opacity-90 text-white font-black text-[9px] uppercase px-6 h-10 rounded-xl shadow-lg transition-transform active:scale-95`}
-        >
-          {isVip ? 'Print VIP Badge ⎙' : 'Print Pass ⎙'}
+        <Button onClick={onPrint} className={`w-full sm:w-auto ${isVip ? 'bg-teal-600 hover:bg-teal-700' : 'bg-slate-900 hover:bg-slate-800'} text-white font-black text-[10px] uppercase px-8 h-12 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2`}>
+          <span className="text-lg">🖨️</span> {isVip ? 'Print VIP' : 'Print Badge'}
         </Button>
       </div>
     </Card>
   )
 }
 
-// WRAP IN SUSPENSE TO FIX VERCEL PRERENDER ERRORS
+// Suspense wrapper required by Next.js for client components doing complex data fetching
 export default function RegistrationDeskPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic animate-pulse">Syncing Registration Feed...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic animate-pulse">Syncing G1 Gate...</div>}>
       <DeskContent />
     </Suspense>
   )
