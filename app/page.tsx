@@ -9,7 +9,6 @@ import { supabase } from '@/lib/supabaseClient'
 export default function LandingPage() {
   const [visitorCount, setVisitorCount] = useState(0)
 
-  // Fetch real-time registration count
   useEffect(() => {
     const fetchCount = async () => {
       const { count } = await supabase
@@ -26,7 +25,6 @@ export default function LandingPage() {
       
       {/* HERO SECTION */}
       <section className="relative h-[700px] flex items-center justify-center text-center text-white bg-slate-900 overflow-hidden">
-        {/* Background Image with Dark Overlay */}
         <div className="absolute inset-0 z-0">
           <Image 
             src="/hero.jpg" 
@@ -39,14 +37,13 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* Hero Content */}
         <div className="relative z-10 max-w-5xl px-6 space-y-8 animate-in fade-in zoom-in duration-700">
           
-          {/* LIVE COUNTER BADGE */}
+          {/* LIVE COUNTER BADGE - CLEANED UP */}
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-4">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-400">
-              {visitorCount + 1400}+ Industry Leaders Registered
+              {visitorCount} Registered Industry Leaders
             </p>
           </div>
 
@@ -73,12 +70,12 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* EVENT DETAILS MINI-BAR */}
-          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-60">
-             <Detail label="DATE" value="JULY 2026" />
-             <Detail label="LOCATION" value="AHMEDABAD" />
-             <Detail label="VENUE" value="HELIPAD GROUND" />
-             <Detail label="TIER" value="PREMIUM B2B" />
+          {/* OFFICIAL EVENT DETAILS */}
+          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-80">
+             <Detail label="DATE" value="12 - 24 AUG 2026" />
+             <Detail label="CITY" value="AHMEDABAD" />
+             <Detail label="VENUE" value="GMDC UNIVERSITY HALL" />
+             <Detail label="TIER" value="PREMIUM" />
           </div>
         </div>
       </section>
@@ -86,28 +83,11 @@ export default function LandingPage() {
       {/* INFO SECTION */}
       <section className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-          
-          <FeatureCard 
-            icon="🏢" 
-            title="500+ Exhibitors" 
-            desc="Direct access to India's leading manufacturers and brand owners." 
-          />
-          
-          <FeatureCard 
-            icon="🤝" 
-            title="Smart Networking" 
-            desc="Use our integrated app tools to schedule one-on-one B2B meetings." 
-          />
-          
-          <FeatureCard 
-            icon="🚀" 
-            title="2026 Collections" 
-            desc="Experience the world premiere of next season's gifting innovations." 
-          />
-
+          <FeatureCard icon="🏢" title="500+ Exhibitors" desc="Direct access to India's leading manufacturers and brand owners." />
+          <FeatureCard icon="🤝" title="Smart Networking" desc="Use our integrated app tools to schedule one-on-one B2B meetings." />
+          <FeatureCard icon="🚀" title="2026 Collections" desc="Experience the world premiere of next season's gifting innovations." />
         </div>
       </section>
-
     </div>
   )
 }
@@ -116,7 +96,7 @@ function Detail({ label, value }: { label: string, value: string }) {
   return (
     <div className="flex flex-col items-center md:items-start">
       <p className="text-[9px] font-black tracking-[0.3em] text-orange-500 mb-1">{label}</p>
-      <p className="text-xs font-bold tracking-widest">{value}</p>
+      <p className="text-xs font-bold tracking-widest uppercase">{value}</p>
     </div>
   )
 }
