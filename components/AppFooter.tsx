@@ -1,7 +1,5 @@
 'use client'
 
-import Image from 'next/image'
-
 export default function AppFooter() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -13,21 +11,18 @@ export default function AppFooter() {
         
         {/* Organizer Info */}
         <div className="flex flex-col items-center gap-4">
-          <div className="relative w-20 h-20">
-             {/* Make sure this src matches whatever your Balaji logo file is named */}
-            <Image 
-              src="/balaji-logo.png" 
-              alt="Shree Balaji Event LLP" 
-              fill 
-              className="object-contain" 
-            />
-          </div>
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">
+          {/* IMPORTANT: Change the src below if your file is named differently! */}
+          <img 
+            src="/balaji-logo.png" 
+            alt="Shree Balaji Event LLP" 
+            className="h-24 w-auto object-contain" 
+          />
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 mt-2">
             Organized By - Shree Balaji Event LLP, Ahmedabad
           </h3>
         </div>
 
-        {/* Quick Actions (Directory Button Removed) */}
+        {/* Quick Actions */}
         <div className="flex flex-wrap justify-center gap-4 pt-4">
           <a 
             href="#" 
