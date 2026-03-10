@@ -6,27 +6,23 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 
-export default function StaffManagementPage() {
+export default function StallRegistryPage() {
   const router = useRouter()
-  const [staffList, setStaffList] = useState<any[]>([])
+  const [stalls, setStalls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  // State for the Edit Modal
+  const [editingStall, setEditingStall] = useState<any>(null)
   const [saving, setSaving] = useState(false)
-
-  // Form State
-  const [fullName, setFullName] = useState('')
-  const [department, setDepartment] = useState('Event Management')
-  const [role, setRole] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
 
   useEffect(() => {
     checkAdmin()
-    fetchStaff()
+    fetchStalls()
   }, [])
 
-  // Security Check
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || user.email !== 'maulikshah.13@gmail.com') {
@@ -36,159 +32,223 @@ export default function StaffManagementPage() {
     }
   }
 
-  // Fetch only users flagged as staff
-  const fetchStaff = async () => {
+  const fetchStalls = async () => {
     const { data, error } = await supabase
       .from('exhibitors')
       .select('*')
-      .eq('is_staff', true)
-      .order('created_at', { ascending: false })
+      .eq('is_staff', false)
+      .order('stall_number', { ascending: true })
     
-    if (!error) setStaffList(data || [])
+    if (!error) setStalls(data || [])
   }
 
-  // Register a new staff member
-  const handleAddStaff = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Save changes to Supabase
+  const handleSave = async () => {
     setSaving(true)
-    
     const { error } = await supabase
       .from('exhibitors')
-      .insert([{ 
-        full_name: fullName, 
-        company_name: department, 
-        designation: role,
-        phone: phone,
-        email: email,
-        is_staff: true,           
-        stall_number: 'STAFF',
-        payment_status: 'Fully Paid'
-      }])
+      .update({
+        stall_number: editingStall.stall_number,
+        stall_tier: editingStall.stall_tier,
+        payment_status: editingStall.payment_status
+      })
+      .eq('id', editingStall.id)
 
-    if (error) {
-      alert(error.message)
+    if (!error) {
+      await fetchStalls() // Refresh the table
+      setEditingStall(null) // Close the modal
     } else {
-      setFullName(''); setRole(''); setPhone(''); setEmail('');
-      fetchStaff()
+      alert("Error saving: " + error.message)
     }
     setSaving(false)
   }
 
-  // Remove a staff member
-  const deleteStaff = async (id: string, name: string) => {
-    if (!confirm(`Revoke credentials and remove ${name} from the staff registry?`)) return
-    const { error } = await supabase.from('exhibitors').delete().eq('id', id)
-    if (!error) fetchStaff()
-  }
+  const filteredStalls = stalls.filter(s => 
+    s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.stall_number?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-  if (loading) return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest text-sm bg-slate-50 min-h-screen">Verifying Clearance...</div>
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-teal-600 uppercase tracking-widest text-[10px] animate-pulse">Accessing Registry...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 pb-20 font-sans text-slate-900">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20 text-slate-900">
+      <div className="max-w-7xl mx-auto space-y-6">
         
         {/* HEADER */}
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm gap-4 border-b-4 border-amber-500">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border-b-4 border-teal-600 gap-4">
           <div>
-            <h1 className="text-3xl font-black uppercase text-amber-600 italic leading-none">Staff Dept.</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">Internal Team Management</p>
+            <h1 className="text-3xl font-black uppercase text-teal-700 tracking-tighter italic leading-none">Exhibitor Dept.</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">
+              GMDC University Hall • Aug 12-24, 2026
+            </p>
           </div>
-          <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-6">
-            ← Back to Hub
-          </Button>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Input 
+              placeholder="Search Stall or Company..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 bg-slate-100 border-0 font-bold rounded-xl text-xs w-full md:w-64"
+            />
+            <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-6 h-10">
+              ← Hub
+            </Button>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-12 gap-6">
-          
-          {/* REGISTRATION FORM */}
-          <Card className="md:col-span-4 border-0 shadow-md rounded-[2rem] overflow-hidden bg-white">
-            <CardHeader className="bg-amber-500 text-white p-6">
-              <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                <span>👷</span> Issue Credentials
+        {/* 4-TIER STATS QUICK-VIEW */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           <TierStat label="Platinum" count={stalls.filter(s => s.stall_tier === 'Platinum').length} color="bg-indigo-600" />
+           <TierStat label="Diamond" count={stalls.filter(s => s.stall_tier === 'Diamond').length} color="bg-purple-600" />
+           <TierStat label="Gold" count={stalls.filter(s => s.stall_tier === 'Gold').length} color="bg-amber-400" />
+           <TierStat label="Silver" count={stalls.filter(s => (!s.stall_tier || s.stall_tier === 'Silver')).length} color="bg-[#0b3d41]" />
+        </div>
+
+        {/* MASTER REGISTRY TABLE */}
+        <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden bg-white">
+          <CardHeader className="bg-slate-900 text-white p-6">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <span>🎪</span> Stall Booking Registry
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto max-h-[600px]">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-100 sticky top-0 z-10">
+                <tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                  <th className="p-4 px-8">Stall</th>
+                  <th className="p-4">Company & Contact</th>
+                  <th className="p-4">Tier</th>
+                  <th className="p-4">Payment</th>
+                  <th className="p-4 text-right px-8">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredStalls.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 px-8">
+                      <div className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-black text-sm shadow-inner">
+                        {s.stall_number || 'TBA'}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <p className="font-black text-slate-900 uppercase text-sm leading-none">{s.company_name}</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{s.full_name} • {s.phone}</p>
+                    </td>
+                    <td className="p-4">
+                      <Badge className={`uppercase text-[8px] font-black tracking-widest px-3 py-1 rounded-full border-0 ${
+                        s.stall_tier === 'Platinum' ? 'bg-indigo-600 text-white' :
+                        s.stall_tier === 'Diamond' ? 'bg-purple-600 text-white' :
+                        s.stall_tier === 'Gold' ? 'bg-amber-400 text-slate-900' :
+                        'bg-[#0b3d41] text-white'
+                      }`}>
+                        {s.stall_tier || 'Silver'}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${s.payment_status === 'Fully Paid' ? 'text-emerald-500' : 'text-orange-500'}`}>
+                        {s.payment_status || 'Pending'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right px-8">
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         onClick={() => setEditingStall({...s})} 
+                         className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                       >
+                         Edit
+                       </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredStalls.length === 0 && (
+              <div className="p-20 text-center text-slate-300 font-black uppercase tracking-widest text-[10px] italic">
+                No matching exhibitor records found.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* EDIT MODAL OVERLAY */}
+      {editingStall && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
+            <CardHeader className="bg-teal-600 text-white p-6 border-b-4 border-teal-800">
+              <CardTitle className="text-sm font-black uppercase tracking-widest">
+                Edit Exhibitor Record
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <form onSubmit={handleAddStaff} className="space-y-4">
-                
-                <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Full Name</Label>
-                  <Input placeholder="E.g. John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="font-black bg-slate-50 border-0 h-12 rounded-xl" />
-                </div>
+            <CardContent className="p-6 space-y-4">
+              
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company</label>
+                <p className="font-black text-slate-900 uppercase">{editingStall.company_name}</p>
+              </div>
 
-                <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Department / Agency</Label>
-                  <Input placeholder="E.g. Security, Media, Core Team" value={department} onChange={(e) => setDepartment(e.target.value)} required className="bg-slate-50 border-0 font-bold h-12 rounded-xl" />
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Role / Designation</Label>
-                  <Input placeholder="E.g. Gate Manager" value={role} onChange={(e) => setRole(e.target.value)} required className="bg-slate-50 border-0 font-bold h-12 rounded-xl" />
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Number</label>
+                <Input 
+                  value={editingStall.stall_number || ''} 
+                  onChange={e => setEditingStall({...editingStall, stall_number: e.target.value.toUpperCase()})}
+                  placeholder="e.g. G5, P1, 88"
+                  className="font-bold uppercase h-12 rounded-xl bg-slate-50"
+                />
+              </div>
 
-                <div className="space-y-1">
-                  <Label className="font-bold text-[10px] uppercase text-slate-400">Phone Number</Label>
-                  <Input type="tel" placeholder="+91..." value={phone} onChange={(e) => setPhone(e.target.value)} required className="font-bold bg-slate-50 border-0 h-12 rounded-xl" />
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Tier</label>
+                <select 
+                  value={editingStall.stall_tier || 'Silver'} 
+                  onChange={e => setEditingStall({...editingStall, stall_tier: e.target.value})}
+                  className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none focus:border-teal-500"
+                >
+                  <option value="Silver">Silver</option>
+                  <option value="Gold">Gold</option>
+                  <option value="Diamond">Diamond</option>
+                  <option value="Platinum">Platinum</option>
+                </select>
+              </div>
 
-                <Button type="submit" disabled={saving} className="w-full bg-slate-900 hover:bg-slate-800 h-14 font-black uppercase text-white rounded-2xl shadow-lg mt-4 transition-all">
-                  {saving ? 'Registering...' : 'Add Team Member'}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Status</label>
+                <select 
+                  value={editingStall.payment_status || 'Pending'} 
+                  onChange={e => setEditingStall({...editingStall, payment_status: e.target.value})}
+                  className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none focus:border-teal-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Fully Paid">Fully Paid</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <Button onClick={() => setEditingStall(null)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">
+                  Cancel
                 </Button>
-              </form>
+                <Button onClick={handleSave} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
+                  {saving ? 'Saving...' : 'Save Updates'}
+                </Button>
+              </div>
+
             </CardContent>
           </Card>
-
-          {/* ACTIVE STAFF LIST */}
-          <Card className="md:col-span-8 border-0 shadow-md flex flex-col h-[700px] rounded-[2rem] overflow-hidden bg-white">
-            <CardHeader className="bg-slate-800 text-amber-500 border-b p-6">
-               <CardTitle className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                 <span>📋</span> Active Roster
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-auto bg-slate-50">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] sticky top-0 z-10">
-                  <tr>
-                    <th className="p-4 px-6">Personnel</th>
-                    <th className="p-4">Assignment</th>
-                    <th className="p-4 text-right px-6">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {staffList.map((s) => (
-                    <tr key={s.id} className="hover:bg-amber-50 transition-colors">
-                      <td className="p-4 px-6 flex items-center gap-4">
-                        <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-700 font-black text-lg border-2 border-amber-200">
-                          👷
-                        </div>
-                        <div>
-                          <p className="font-black text-slate-900 uppercase text-sm">{s.full_name}</p>
-                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">{s.phone}</p>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <p className="font-bold text-amber-600 uppercase text-xs">{s.company_name}</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{s.designation || 'Staff'}</p>
-                      </td>
-                      <td className="p-4 text-right px-6">
-                        <Button variant="ghost" size="sm" onClick={() => deleteStaff(s.id, s.full_name)} className="h-8 text-slate-400 hover:text-red-600 font-black text-[9px] uppercase hover:bg-red-50 rounded-lg">
-                          Revoke
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {staffList.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="p-12 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest italic bg-slate-50">
-                        No active staff members registered.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-
         </div>
+      )}
+    </div>
+  )
+}
+
+function TierStat({ label, count, color }: { label: string, count: number, color: string }) {
+  return (
+    <div className="bg-white p-4 rounded-2xl shadow-sm border-l-4 flex items-center justify-between" style={{ borderLeftColor: color.includes('bg-') ? undefined : color }}>
+      <div className={`w-2 h-10 rounded-full ${color}`}></div>
+      <div className="text-right">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-2xl font-black text-slate-900 leading-none">{count}</p>
       </div>
     </div>
   )
