@@ -3,48 +3,29 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
-export default function SuperAdminDashboard() {
+export default function AdminHubPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  
-  // High-level stats for the dashboard
-  const [stats, setStats] = useState({ stalls: 0, visitors: 0, staff: 0 })
+  const [adminName, setAdminName] = useState('Admin')
 
   useEffect(() => {
-    initAdmin()
-    
-    // Auto-refresh the live stats every 60 seconds
-    const interval = setInterval(fetchStats, 60000)
-    return () => clearInterval(interval)
+    checkAdmin()
   }, [])
 
-  const initAdmin = async () => {
+  const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser()
+    const allowedEmails = ['maulikshah.13@gmail.com', 'connect@shreebalajievent.com']
     
-    // Security Check: Only Maulik Shah can access this hub
-    if (!user || user.email !== 'maulikshah.13@gmail.com') {
+    if (!user || !allowedEmails.includes(user.email || '')) {
       router.push('/login')
-      return
+    } else {
+      // Personalize the greeting based on the login email
+      setAdminName(user.email === 'maulikshah.13@gmail.com' ? 'Maulik' : 'Balaji Team')
+      setLoading(false)
     }
-    
-    await fetchStats()
-    setLoading(false)
-  }
-
-  const fetchStats = async () => {
-    // Fetch quick overview stats (fails safely if tables are empty)
-    const { count: stallCount } = await supabase.from('stalls').select('*', { count: 'exact', head: true })
-    const { count: visitorCount } = await supabase.from('visitors').select('*', { count: 'exact', head: true })
-    const { count: staffCount } = await supabase.from('exhibitors').select('*', { count: 'exact', head: true }).eq('is_staff', true)
-    
-    setStats({ 
-      stalls: stallCount || 0, 
-      visitors: visitorCount || 0,
-      staff: staffCount || 0
-    })
   }
 
   const handleLogout = async () => {
@@ -52,134 +33,102 @@ export default function SuperAdminDashboard() {
     router.push('/login')
   }
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-slate-400 uppercase tracking-widest text-[10px] animate-pulse">Authorizing Command Center...</div>
+  const adminModules = [
+    { 
+      title: 'Visitor Database', icon: '👥', link: '/admin/visitors', color: 'bg-orange-500', 
+      desc: 'View registered attendees, manage leads, and export to CSV.' 
+    },
+    { 
+      title: 'Exhibitor Dept.', icon: '🎪', link: '/admin/stalls', color: 'bg-teal-600', 
+      desc: 'Manage stall assignments, tiers, and payment statuses.' 
+    },
+    { 
+      title: 'Security Scanner', icon: '📷', link: '/admin/scanner', color: 'bg-slate-900', 
+      desc: 'Mobile-first QR terminal for Gate Entry verification.' 
+    },
+    { 
+      title: 'Staff Dept.', icon: '👷', link: '/admin/staff', color: 'bg-amber-500', 
+      desc: 'Monitor registered internal personnel and vendor teams.' 
+    },
+    { 
+      title: 'Live Floor Plan', icon: '🗺️', link: '/floor-plan', color: 'bg-indigo-600', 
+      desc: 'Interactive 4-tier visual map of the GMDC ground.' 
+    },
+    { 
+      title: 'Scan Analytics', icon: '📈', link: '/admin/analytics', color: 'bg-blue-600', 
+      desc: 'Real-time charts showing traffic trends and tier ratios.' 
+    },
+    { 
+      title: 'Broadcast Center', icon: '📢', link: '/admin/broadcast', color: 'bg-purple-600', 
+      desc: 'Push live announcements to specific user groups.' 
+    }
+  ]
+
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Initializing Hub...</div>
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20 selection:bg-[#0b3d41] selection:text-white">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2rem] shadow-sm border-b-4 border-[#0b3d41] gap-6">
-          <div className="flex items-center gap-6">
-            <img src="/event-logo.png" alt="GGE 2026" className="h-16 object-contain hidden sm:block" />
-            <div>
-              <h1 className="text-3xl md:text-4xl font-black uppercase text-[#0b3d41] italic tracking-tighter leading-none">Super Admin Hub</h1>
-              <div className="flex items-center gap-2 mt-2">
-                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                 <p className="text-[10px] md:text-xs font-bold text-[#ef6c33] uppercase tracking-[0.2em]">Guj Gift Expo 2026 • Live Sync Active</p>
-              </div>
-            </div>
+        {/* HUB HEADER */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-[2.5rem] shadow-sm border-b-4 border-[#0b3d41] gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none">
+              Super Admin Hub
+            </h1>
+            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
+              Welcome back, {adminName} • Guj Gift Expo 2026
+            </p>
           </div>
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="text-right hidden lg:block mr-2">
-              <p className="text-[10px] font-black uppercase text-slate-400">System Admin</p>
-              <p className="text-xs font-bold text-slate-800">maulikshah.13@gmail.com</p>
-            </div>
-            <Button onClick={() => router.push('/admin/analytics')} variant="outline" className="font-bold border-2 text-[10px] uppercase rounded-xl px-4 h-12 w-full md:w-auto">
-              📊 Reports
-            </Button>
-            <Button onClick={handleLogout} variant="destructive" className="font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12 w-full md:w-auto shadow-lg">
-              Secure Logout
-            </Button>
+          <div className="flex gap-3 w-full md:w-auto">
+             <Button variant="outline" onClick={() => router.push('/')} className="font-bold border-2 border-slate-200 text-slate-600 text-[10px] uppercase rounded-xl h-12 px-6 flex-1 md:flex-none">
+               View Live Site
+             </Button>
+             <Button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-12 px-6 shadow-md transition-all flex-1 md:flex-none">
+               Secure Logout
+             </Button>
           </div>
         </div>
 
-        {/* QUICK STATS ROW */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-md rounded-[1.5rem] bg-white">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl mb-2">🎪</span>
-              <p className="text-3xl font-black text-[#0b3d41]">{stats.stalls}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Stalls Booked</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md rounded-[1.5rem] bg-white">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl mb-2">👥</span>
-              <p className="text-3xl font-black text-teal-600">{stats.visitors}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pre-Registrations</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md rounded-[1.5rem] bg-white">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl mb-2">👷</span>
-              <p className="text-3xl font-black text-amber-500">{stats.staff}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Active Staff</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md rounded-[1.5rem] bg-[#ef6c33] text-white">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <span className="text-3xl mb-2 opacity-80">🗺️</span>
-              <p className="text-xl font-black uppercase italic mt-1 leading-tight">Live<br/>Map</p>
-              <Button onClick={() => router.push('/floor-plan')} variant="secondary" size="sm" className="mt-3 text-[9px] font-black uppercase rounded-full px-6 text-[#ef6c33]">View</Button>
-            </CardContent>
-          </Card>
+        {/* SYSTEM STATUS BANNER */}
+        <div className="bg-[#0b3d41] rounded-2xl p-4 flex items-center justify-between text-white shadow-lg overflow-hidden relative">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
+           <div className="flex items-center gap-3 relative z-10">
+              <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></div>
+              <span className="text-[10px] font-black uppercase tracking-widest">All Core Systems Operational</span>
+           </div>
+           <span className="text-[9px] font-bold tracking-widest opacity-60 relative z-10 hidden md:block">Lead Management System V2.1</span>
         </div>
 
-        {/* MAIN DEPARTMENT GRID */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-          
-          {/* EXHIBITOR MANAGEMENT */}
-          <Card onClick={() => router.push('/admin/stalls')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group">
-            <div className="h-2 bg-teal-600 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">🏢</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Exhibitor Dept.</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">Manage stall registry, allocate space tiers (Diamond, Gold, Silver), track payments, and set badge quotas.</p>
-            </CardContent>
-          </Card>
-
-          {/* VISITOR MANAGEMENT */}
-          <Card onClick={() => router.push('/admin/visitors')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group">
-            <div className="h-2 bg-blue-500 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">🎟️</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Visitor Dept.</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">View all pre-registered visitors, edit profiles, block unauthorized access, and export master data.</p>
-            </CardContent>
-          </Card>
-
-          {/* REGISTRATION DESK */}
-          <Card onClick={() => router.push('/admin/registration-desk')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group">
-            <div className="h-2 bg-purple-500 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">🖨️</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Reg Desk (G1)</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">On-site tool for the G1 Entrance. Quickly search visitors by phone, verify details, and print entry badges.</p>
-            </CardContent>
-          </Card>
-
-          {/* STAFF MANAGEMENT */}
-          <Card onClick={() => router.push('/admin/staff')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group">
-            <div className="h-2 bg-amber-500 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">👷</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Staff Dept.</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">Register event volunteers, assign specific roles (e.g., Gate Keeper, Help Desk), and generate Staff Badges.</p>
-            </CardContent>
-          </Card>
-
-          {/* SECURITY MANAGEMENT */}
-          <Card onClick={() => router.push('/admin/security')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group opacity-50 hover:opacity-100">
-            <div className="h-2 bg-red-600 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">🛡️</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Security Dept.</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">Manage VIP Lounge access, track real-time gate entry scans, and review security incident logs.</p>
-            </CardContent>
-          </Card>
-
-          {/* COMMUNICATIONS & BROADCAST */}
-          <Card onClick={() => router.push('/admin/broadcast')} className="cursor-pointer border-0 shadow-lg hover:shadow-2xl transition-all rounded-[2rem] bg-white overflow-hidden group opacity-50 hover:opacity-100">
-            <div className="h-2 bg-indigo-500 w-full"></div>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">📢</div>
-              <h2 className="text-xl font-black uppercase text-[#0b3d41] mb-2">Broadcast Center</h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-relaxed">Send mass announcements, schedule WhatsApp alerts, and push live updates to the Exhibitor Dashboards.</p>
-            </CardContent>
-          </Card>
-
+        {/* MODULES GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {adminModules.map((mod, idx) => (
+            <Card 
+              key={idx} 
+              onClick={() => router.push(mod.link)}
+              className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-[2rem] overflow-hidden bg-white cursor-pointer group"
+            >
+              <div className={`h-2 w-full ${mod.color}`}></div>
+              <CardHeader className="p-6 pb-2 flex flex-row items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner ${mod.color} text-white group-hover:scale-110 transition-transform`}>
+                  {mod.icon}
+                </div>
+                <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-900 group-hover:text-[#0b3d41] transition-colors">
+                  {mod.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-2">
+                <p className="text-xs font-medium text-slate-500 leading-relaxed">
+                  {mod.desc}
+                </p>
+                <div className="mt-4 flex items-center text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-orange-500 transition-colors">
+                  Access Module <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
       </div>
     </div>
   )
