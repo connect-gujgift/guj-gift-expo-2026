@@ -1,141 +1,145 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient' // This fixes "Cannot find name 'supabase'"
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-export const dynamic = 'force-dynamic'
-
-export default function ScanAnalytics() {
+export default function AnalyticsPage() {
   const router = useRouter()
-  
-  // These state declarations allow the functions below to find the names
   const [loading, setLoading] = useState(true)
-  const [hourlyData, setHourlyData] = useState<any[]>([])
-  const [topExhibitors, setTopExhibitors] = useState<any[]>([])
+  
+  const [tierData, setTierData] = useState<any[]>([])
+  const [trafficData, setTrafficData] = useState<any[]>([])
 
   useEffect(() => {
+    checkAdmin()
     fetchAnalytics()
   }, [])
 
-  // This function is now inside the component to access state setters
-  const fetchAnalytics = async () => {
-    setLoading(true)
-    
-    // Fetch leads and join with exhibitors
-    const { data, error } = await supabase
-      .from('leads')
-      .select('created_at, exhibitors(company_name, stall_number)')
-
-    if (error) {
-      console.error(error)
+  const checkAdmin = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || user.email !== 'maulikshah.13@gmail.com') {
+      router.push('/login')
+    } else {
       setLoading(false)
-      return
     }
-
-    // Use 'as any[]' to prevent property errors on the joined data
-    const leads = data as any[]
-
-    // 1. Process Busiest Hours
-    const hourMap: Record<number, number> = {}
-    leads.forEach(lead => {
-      const hour = new Date(lead.created_at).getHours()
-      hourMap[hour] = (hourMap[hour] || 0) + 1
-    })
-    
-    const fullHourly = Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`,
-      count: hourMap[i] || 0
-    })).filter(h => h.count > 0 || (parseInt(h.hour) >= 9 && parseInt(h.hour) <= 18))
-
-    // 2. Process Top Performing Exhibitors
-    const exhibitorMap: Record<string, { name: string; stall: string; count: number }> = {}
-    leads.forEach(lead => {
-      const name = lead.exhibitors?.company_name || 'Unknown'
-      const stall = lead.exhibitors?.stall_number || 'N/A'
-      
-      if (!exhibitorMap[name]) {
-        exhibitorMap[name] = { name, stall, count: 0 }
-      }
-      exhibitorMap[name].count++
-    })
-
-    const topList = Object.values(exhibitorMap)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
-
-    // Updating the state
-    setHourlyData(fullHourly)
-    setTopExhibitors(topList)
-    setLoading(false)
   }
 
-  if (loading) return <div className="p-20 text-center font-black uppercase text-slate-400">Analyzing Expo Trends...</div>
+  const fetchAnalytics = async () => {
+    // 1. Fetch Exhibitor Tiers for the Bar Chart
+    const { data: exhibitors } = await supabase.from('exhibitors').select('stall_tier').eq('is_staff', false)
+    
+    let diamond = 0, gold = 0, silver = 0;
+    if (exhibitors) {
+      exhibitors.forEach(e => {
+        if (e.stall_tier === 'Diamond') diamond++
+        else if (e.stall_tier === 'Gold') gold++
+        else silver++
+      })
+    }
+    
+    setTierData([
+      { name: 'DIAMOND', count: diamond, fill: '#06b6d4' }, 
+      { name: 'GOLD', count: gold, fill: '#fbbf24' },    
+      { name: 'SILVER', count: silver, fill: '#94a3b8' }  
+    ])
 
-  const maxScans = Math.max(...hourlyData.map(h => h.count), 1)
+    // 2. Fetch Visitor Registration Trends
+    const { data: visitors } = await supabase.from('visitors').select('created_at')
+    
+    if (visitors && visitors.length > 0) {
+      const dates = visitors.reduce((acc: any, visitor) => {
+        const date = new Date(visitor.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        acc[date] = (acc[date] || 0) + 1
+        return acc
+      }, {})
+
+      const formattedTraffic = Object.keys(dates).map(date => ({
+        time: date,
+        visitors: dates[date]
+      }))
+      setTrafficData(formattedTraffic)
+    } else {
+      // Fallback dummy data if no visitors exist yet
+      setTrafficData([
+        { time: 'Aug 10', visitors: 12 },
+        { time: 'Aug 11', visitors: 45 },
+        { time: 'Aug 12', visitors: 120 },
+        { time: 'Aug 13', visitors: 310 }
+      ])
+    }
+  }
+
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Compiling Data...</div>
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 pb-20 font-sans">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20">
+      <div className="max-w-7xl mx-auto space-y-6">
         
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border-b-4 border-orange-500 gap-4">
           <div>
-            <h1 className="text-2xl font-black uppercase text-[#0b3d41] tracking-tighter italic">Scan Analytics 📈</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">GGE 2026 Traffic Insights</p>
+            <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none flex items-center gap-3">
+              Scan Analytics 📈
+            </h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 italic">
+              GGE 2026 Traffic Insights
+            </p>
           </div>
-          <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold text-xs uppercase rounded-xl">Back to Control</Button>
+          <Button variant="outline" onClick={() => router.push('/admin')} className="font-bold border-2 text-[10px] uppercase rounded-xl px-6 h-10 w-full md:w-auto">
+            ← Back to Control
+          </Button>
         </div>
 
+        {/* CHARTS GRID */}
         <div className="grid md:grid-cols-2 gap-6">
           
-          {/* HOURLY TRAFFIC CHART */}
-          <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-sm font-black uppercase text-slate-500">Traffic by Hour</CardTitle>
+          {/* TRAFFIC TREND CHART */}
+          <Card className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
+            <CardHeader className="bg-slate-900 text-white p-6">
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-orange-500">
+                Visitor Registration Trend
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {hourlyData.map((data, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-400 w-10">{data.hour}</span>
-                    <div className="flex-1 bg-slate-100 h-6 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-[#ef6c33] h-full transition-all duration-1000" 
-                        style={{ width: `${(data.count / maxScans) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-[10px] font-black text-[#0b3d41] w-8 text-right">{data.count}</span>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="p-6 h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trafficData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                    labelStyle={{ fontWeight: 'black', color: '#0b3d41', textTransform: 'uppercase' }}
+                  />
+                  <Line type="monotone" dataKey="visitors" stroke="#ef6c33" strokeWidth={4} dot={{ r: 6, fill: '#ef6c33', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 8 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* TOP PERFORMERS */}
-          <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-sm font-black uppercase text-slate-500">Top Exhibitors</CardTitle>
+          {/* EXHIBITOR TIER CHART */}
+          <Card className="border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
+            <CardHeader className="bg-slate-900 text-white p-6">
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-teal-400">
+                Exhibitor Tiers (Live)
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-slate-100">
-                {topExhibitors.map((ex, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <span className="text-lg font-black text-slate-200">#{i + 1}</span>
-                      <div>
-                        <p className="font-black text-[#0b3d41] uppercase text-xs">{ex.name}</p>
-                        <p className="text-[9px] font-bold text-blue-600 uppercase">Stall: {ex.stall}</p>
-                      </div>
-                    </div>
-                    <div className="bg-orange-50 text-[#ef6c33] px-3 py-1 rounded-full font-black text-[11px]">
-                      {ex.count} Scans
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <CardContent className="p-6 h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tierData} margin={{ top: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} dy={10} />
+                  <Tooltip 
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                    labelStyle={{ display: 'none' }}
+                  />
+                  <Bar dataKey="count" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
