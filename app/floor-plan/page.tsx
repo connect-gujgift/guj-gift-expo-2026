@@ -28,25 +28,31 @@ function FloorPlanContent() {
     fetchOccupancy()
   }, [])
 
-  const getStallStyle = (stallId: string) => {
+  // UPGRADED: Now accepts the map 'type' to enforce the legend colors
+  const getStallStyle = (stallId: string, type: string) => {
     const data = occupancy[stallId]
+    
+    // Search Logic
     const isMatch = searchQuery && data && (
       data.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       stallId.toLowerCase().includes(searchQuery.toLowerCase())
     )
     
-    // Highlight effect for the Search Bar
-    const highlight = isMatch ? 'ring-4 ring-[#ef6c33] z-10 scale-110 shadow-2xl transition-all' : 'transition-all'
+    // If a search is active, heavily dim the non-matching stalls
+    const dimIfNotMatch = (searchQuery && !isMatch) ? 'opacity-10 grayscale' : ''
+    const highlight = isMatch ? 'ring-4 ring-[#ef6c33] z-20 scale-125 shadow-2xl' : ''
 
-    if (!data) return `${highlight} bg-white border-slate-300 text-slate-400 hover:bg-slate-50`
-    
-    // Internal Map uses Tier Colors to easily spot premium vs standard blocks
-    switch(data.stall_type) {
-      case 'Platinum': return `${highlight} bg-indigo-600 border-indigo-800 text-white shadow-lg`
-      case 'Diamond': return `${highlight} bg-purple-600 border-purple-800 text-white shadow-md`
-      case 'Gold': return `${highlight} bg-amber-500 border-amber-700 text-white`
-      default: return `${highlight} bg-[#0b3d41] border-[#082a2d] text-white` // Silver
-    }
+    // Base Tier Colors
+    let colors = ''
+    if (type === 'Platinum') colors = 'bg-indigo-600 border-indigo-800 text-white'
+    else if (type === 'Diamond') colors = 'bg-purple-600 border-purple-800 text-white'
+    else if (type === 'Gold') colors = 'bg-amber-500 border-amber-700 text-white'
+    else colors = 'bg-[#0b3d41] border-[#082a2d] text-white' // Silver
+
+    // If available, make it semi-transparent. If booked, solid color!
+    const baseOpacity = !data ? 'opacity-30 hover:opacity-100' : 'opacity-100 shadow-md'
+
+    return `transition-all duration-300 ${colors} ${baseOpacity} ${dimIfNotMatch} ${highlight}`
   }
 
   const getStalls = (start: number, end: number, reverse = false) => {
@@ -55,25 +61,23 @@ function FloorPlanContent() {
     return reverse ? arr.reverse() : arr
   }
 
-  // Pixel-perfect sizing based on your layout image gaps
   const StallBox = ({ id, type = 'Silver', customClass = '' }: { id: string, type?: 'Silver'|'Gold'|'Diamond'|'Platinum', customClass?: string }) => {
     const info = occupancy[id]
     
-    let sizeClass = 'w-10 h-10' // Silver (1x1)
-    if (type === 'Gold') sizeClass = 'w-[84px] h-[84px]' // Gold (2x2)
-    if (type === 'Diamond') sizeClass = 'w-[128px] h-[84px]' // Diamond (3x2)
-    if (type === 'Platinum') sizeClass = 'w-[172px] h-[84px]' // Platinum (4x2)
+    let sizeClass = 'w-10 h-10' 
+    if (type === 'Gold') sizeClass = 'w-[84px] h-[84px]' 
+    if (type === 'Diamond') sizeClass = 'w-[128px] h-[84px]' 
+    if (type === 'Platinum') sizeClass = 'w-[172px] h-[84px]' 
     if (customClass) sizeClass = customClass
 
     return (
-      <div title={info ? `${id}: ${info.company_name}` : `${id}: Available`} className={`border-2 flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-300 ${sizeClass} ${getStallStyle(id)}`}>
+      <div title={info ? `${id}: ${info.company_name}` : `${id}: Available`} className={`border-2 flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-300 ${sizeClass} ${getStallStyle(id, type)}`}>
         <span className={`font-black ${type === 'Silver' ? 'text-[9px]' : 'text-sm'}`}>{id}</span>
         {info && <span className="text-[5px] font-bold uppercase truncate w-full text-center mt-0.5 px-0.5 leading-none">{info.company_name}</span>}
       </div>
     )
   }
 
-  // Helpers for generating the central islands
   const LeftIsland = ({ lg, rg, ts, te, bs, be }: any) => (
     <div className="flex gap-1 border-[3px] border-slate-100 p-1 bg-slate-50">
        <StallBox id={lg} type="Gold" />
@@ -196,7 +200,7 @@ function FloorPlanContent() {
            </div>
         </div>
 
-        <Button onClick={() => router.push('/admin')} className="w-full h-16 bg-slate-900 text-white font-black uppercase tracking-widest rounded-[1.5rem] shadow-xl hover:bg-black transition-all">
+        <Button onClick={() => router.push('/admin')} className="w-full h-16 bg-slate-900 text-white font-black uppercase tracking-widest rounded-[1.5rem] shadow-xl hover:bg-black transition-all print:hidden">
           Back to Admin Hub
         </Button>
 
