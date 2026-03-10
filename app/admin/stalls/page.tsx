@@ -48,7 +48,8 @@ export default function StallRegistryPage() {
       .update({
         stall_number: editingStall.stall_number,
         stall_tier: editingStall.stall_tier,
-        payment_status: editingStall.payment_status
+        payment_status: editingStall.payment_status,
+        badge_limit: editingStall.badge_limit // Added Badge Limit to database save
       })
       .eq('id', editingStall.id)
 
@@ -56,7 +57,7 @@ export default function StallRegistryPage() {
       await fetchStalls() 
       setEditingStall(null) 
     } else {
-      alert("Error saving: " + error.message)
+      alert("Error saving: " + error.message + "\n(Make sure 'badge_limit' column exists in Supabase!)")
     }
     setSaving(false)
   }
@@ -115,7 +116,7 @@ export default function StallRegistryPage() {
                 <tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                   <th className="p-4 px-8">Stall</th>
                   <th className="p-4">Company & Contact</th>
-                  <th className="p-4">Tier</th>
+                  <th className="p-4">Tier & Badges</th>
                   <th className="p-4">Payment</th>
                   <th className="p-4 text-right px-8">Actions</th>
                 </tr>
@@ -132,15 +133,20 @@ export default function StallRegistryPage() {
                       <p className="font-black text-slate-900 uppercase text-sm leading-none">{s.company_name}</p>
                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{s.full_name} • {s.phone}</p>
                     </td>
-                    <td className="p-4">
-                      <Badge className={`uppercase text-[8px] font-black tracking-widest px-3 py-1 rounded-full border-0 ${
-                        s.stall_tier === 'Platinum' ? 'bg-indigo-600 text-white' :
-                        s.stall_tier === 'Diamond' ? 'bg-purple-600 text-white' :
-                        s.stall_tier === 'Gold' ? 'bg-amber-400 text-slate-900' :
-                        'bg-[#0b3d41] text-white'
-                      }`}>
-                        {s.stall_tier || 'Silver'}
-                      </Badge>
+                    <td className="p-4 space-y-1">
+                      <div>
+                        <Badge className={`uppercase text-[8px] font-black tracking-widest px-3 py-1 rounded-full border-0 ${
+                          s.stall_tier === 'Platinum' ? 'bg-indigo-600 text-white' :
+                          s.stall_tier === 'Diamond' ? 'bg-purple-600 text-white' :
+                          s.stall_tier === 'Gold' ? 'bg-amber-400 text-slate-900' :
+                          'bg-[#0b3d41] text-white'
+                        }`}>
+                          {s.stall_tier || 'Silver'}
+                        </Badge>
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                        {s.badge_limit || 0} Badges Allowed
+                      </p>
                     </td>
                     <td className="p-4">
                       <span className={`text-[9px] font-black uppercase tracking-widest ${s.payment_status === 'Fully Paid' ? 'text-emerald-500' : 'text-orange-500'}`}>
@@ -172,10 +178,19 @@ export default function StallRegistryPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company</label>
                 <p className="font-black text-slate-900 uppercase">{editingStall.company_name}</p>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Number</label>
-                <Input value={editingStall.stall_number || ''} onChange={e => setEditingStall({...editingStall, stall_number: e.target.value.toUpperCase()})} placeholder="e.g. G5, P1, 88" className="font-bold uppercase h-12 rounded-xl bg-slate-50"/>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Number</label>
+                  <Input value={editingStall.stall_number || ''} onChange={e => setEditingStall({...editingStall, stall_number: e.target.value.toUpperCase()})} placeholder="e.g. G5" className="font-bold uppercase h-12 rounded-xl bg-slate-50"/>
+                </div>
+                {/* NEW BADGE LIMIT FIELD */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Badge Limit</label>
+                  <Input type="number" min="0" value={editingStall.badge_limit || ''} onChange={e => setEditingStall({...editingStall, badge_limit: parseInt(e.target.value) || 0})} placeholder="e.g. 5" className="font-bold h-12 rounded-xl bg-slate-50"/>
+                </div>
               </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Tier</label>
                 <select value={editingStall.stall_tier || 'Silver'} onChange={e => setEditingStall({...editingStall, stall_tier: e.target.value})} className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none">
@@ -192,9 +207,13 @@ export default function StallRegistryPage() {
                   <option value="Fully Paid">Fully Paid</option>
                 </select>
               </div>
-              <div className="flex gap-4 pt-4">
+              
+              {/* FIXED BUTTON LAYOUT: Using a 2-column grid instead of flex so they fit perfectly */}
+              <div className="grid grid-cols-2 gap-4 pt-4">
                 <Button onClick={() => setEditingStall(null)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
-                <Button onClick={handleSave} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black uppercase tracking-widest rounded-xl h-12">Save Updates</Button>
+                <Button onClick={handleSave} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black uppercase tracking-widest rounded-xl h-12">
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
               </div>
             </CardContent>
           </Card>
