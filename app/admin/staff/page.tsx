@@ -56,11 +56,11 @@ export default function StaffDeptPage() {
     const staffRecord = {
       full_name: newStaff.full_name,
       phone: newStaff.phone,
-      company_name: newStaff.role, // Using company field to store their internal role
-      stall_number: 'ORG-TEAM',
+      company_name: newStaff.role, 
+      stall_number: ['ORG-TEAM'], // <-- FIX: Wrapped in array brackets
       stall_tier: 'Organizer',
       is_staff: true,
-      payment_status: 'Fully Paid' // Organizers don't pay
+      payment_status: 'Fully Paid' 
     }
 
     const { error } = await supabase.from('exhibitors').insert([staffRecord])
