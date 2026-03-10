@@ -14,7 +14,6 @@ export default function StallRegistryPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   
-  // State for the Edit Modal
   const [editingStall, setEditingStall] = useState<any>(null)
   const [saving, setSaving] = useState(false)
 
@@ -42,7 +41,6 @@ export default function StallRegistryPage() {
     if (!error) setStalls(data || [])
   }
 
-  // Save changes to Supabase
   const handleSave = async () => {
     setSaving(true)
     const { error } = await supabase
@@ -55,8 +53,8 @@ export default function StallRegistryPage() {
       .eq('id', editingStall.id)
 
     if (!error) {
-      await fetchStalls() // Refresh the table
-      setEditingStall(null) // Close the modal
+      await fetchStalls() 
+      setEditingStall(null) 
     } else {
       alert("Error saving: " + error.message)
     }
@@ -96,7 +94,7 @@ export default function StallRegistryPage() {
           </div>
         </div>
 
-        {/* 4-TIER STATS QUICK-VIEW */}
+        {/* 4-TIER STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
            <TierStat label="Platinum" count={stalls.filter(s => s.stall_tier === 'Platinum').length} color="bg-indigo-600" />
            <TierStat label="Diamond" count={stalls.filter(s => s.stall_tier === 'Diamond').length} color="bg-purple-600" />
@@ -104,7 +102,7 @@ export default function StallRegistryPage() {
            <TierStat label="Silver" count={stalls.filter(s => (!s.stall_tier || s.stall_tier === 'Silver')).length} color="bg-[#0b3d41]" />
         </div>
 
-        {/* MASTER REGISTRY TABLE */}
+        {/* REGISTRY TABLE */}
         <Card className="border-0 shadow-lg rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-900 text-white p-6">
             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
@@ -150,12 +148,7 @@ export default function StallRegistryPage() {
                       </span>
                     </td>
                     <td className="p-4 text-right px-8">
-                       <Button 
-                         variant="ghost" 
-                         size="sm" 
-                         onClick={() => setEditingStall({...s})} 
-                         className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                       >
+                       <Button variant="ghost" size="sm" onClick={() => setEditingStall({...s})} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
                          Edit
                        </Button>
                     </td>
@@ -163,77 +156,46 @@ export default function StallRegistryPage() {
                 ))}
               </tbody>
             </table>
-            {filteredStalls.length === 0 && (
-              <div className="p-20 text-center text-slate-300 font-black uppercase tracking-widest text-[10px] italic">
-                No matching exhibitor records found.
-              </div>
-            )}
           </CardContent>
         </Card>
-
       </div>
 
-      {/* EDIT MODAL OVERLAY */}
+      {/* EDIT MODAL */}
       {editingStall && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
             <CardHeader className="bg-teal-600 text-white p-6 border-b-4 border-teal-800">
-              <CardTitle className="text-sm font-black uppercase tracking-widest">
-                Edit Exhibitor Record
-              </CardTitle>
+              <CardTitle className="text-sm font-black uppercase tracking-widest">Edit Exhibitor</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company</label>
                 <p className="font-black text-slate-900 uppercase">{editingStall.company_name}</p>
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Number</label>
-                <Input 
-                  value={editingStall.stall_number || ''} 
-                  onChange={e => setEditingStall({...editingStall, stall_number: e.target.value.toUpperCase()})}
-                  placeholder="e.g. G5, P1, 88"
-                  className="font-bold uppercase h-12 rounded-xl bg-slate-50"
-                />
+                <Input value={editingStall.stall_number || ''} onChange={e => setEditingStall({...editingStall, stall_number: e.target.value.toUpperCase()})} placeholder="e.g. G5, P1, 88" className="font-bold uppercase h-12 rounded-xl bg-slate-50"/>
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stall Tier</label>
-                <select 
-                  value={editingStall.stall_tier || 'Silver'} 
-                  onChange={e => setEditingStall({...editingStall, stall_tier: e.target.value})}
-                  className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none focus:border-teal-500"
-                >
+                <select value={editingStall.stall_tier || 'Silver'} onChange={e => setEditingStall({...editingStall, stall_tier: e.target.value})} className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none">
                   <option value="Silver">Silver</option>
                   <option value="Gold">Gold</option>
                   <option value="Diamond">Diamond</option>
                   <option value="Platinum">Platinum</option>
                 </select>
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Status</label>
-                <select 
-                  value={editingStall.payment_status || 'Pending'} 
-                  onChange={e => setEditingStall({...editingStall, payment_status: e.target.value})}
-                  className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none focus:border-teal-500"
-                >
+                <select value={editingStall.payment_status || 'Pending'} onChange={e => setEditingStall({...editingStall, payment_status: e.target.value})} className="w-full h-12 rounded-xl bg-slate-50 border border-slate-200 px-4 font-bold text-sm outline-none">
                   <option value="Pending">Pending</option>
                   <option value="Fully Paid">Fully Paid</option>
                 </select>
               </div>
-
               <div className="flex gap-4 pt-4">
-                <Button onClick={() => setEditingStall(null)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
-                  {saving ? 'Saving...' : 'Save Updates'}
-                </Button>
+                <Button onClick={() => setEditingStall(null)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
+                <Button onClick={handleSave} disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black uppercase tracking-widest rounded-xl h-12">Save Updates</Button>
               </div>
-
             </CardContent>
           </Card>
         </div>
