@@ -39,7 +39,6 @@ export default function StaffDeptPage() {
   }
 
   const fetchStaff = async () => {
-    // Fetch everyone marked as staff (both exhibitor staff and internal staff)
     const { data, error } = await supabase
       .from('exhibitors')
       .select('*')
@@ -57,7 +56,7 @@ export default function StaffDeptPage() {
       full_name: newStaff.full_name,
       phone: newStaff.phone,
       company_name: newStaff.role, 
-      stall_number: ['ORG-TEAM'], // <-- FIX: Wrapped in array brackets
+      stall_number: ['ORG-TEAM'],
       stall_tier: 'Organizer',
       is_staff: true,
       payment_status: 'Fully Paid' 
@@ -206,28 +205,69 @@ export default function StaffDeptPage() {
         </div>
       )}
 
-      {/* DIGITAL PASS MODAL (QR CODE) */}
+      {/* PREMIUM DIGITAL PASS MODAL */}
       {selectedStaff && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-4 border-amber-500">
-            <div className="bg-amber-500 text-white text-center py-6 px-4 relative">
-               <h2 className="text-xl font-black uppercase tracking-widest italic">Official Staff Pass</h2>
-               <p className="text-[10px] font-bold text-amber-100 uppercase tracking-widest mt-1">Guj Gift Expo 2026</p>
-               <button onClick={() => setSelectedStaff(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">✕</button>
+          <div className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 relative border-4 border-amber-500">
+            
+            {/* Logo Section */}
+            <div className="bg-white pt-6 pb-4 flex justify-center">
+              <img src="/event-logo.png" alt="Guj Gift Expo" className="h-16 object-contain" />
             </div>
-            <div className="p-8 flex flex-col items-center text-center space-y-6">
-              <div className="space-y-1 w-full border-b border-slate-100 pb-6">
-                <p className="text-2xl font-black text-slate-900 uppercase leading-none">{selectedStaff.full_name}</p>
-                <p className="text-sm font-bold text-amber-600 uppercase pt-1">{selectedStaff.company_name}</p>
+
+            {/* Badge Label */}
+            <div className="flex justify-center -mt-5 relative z-10">
+              <div className="bg-amber-500 text-white px-6 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border-4 border-white shadow-sm">
+                Official Staff Pass
               </div>
-              <div className="bg-white p-4 rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)] border-2 border-slate-100">
-                <QRCodeSVG value={`GGE2026-STAFF-${selectedStaff.id}`} size={180} level="H" includeMargin={false} fgColor="#0f172a" />
+            </div>
+
+            {/* Body Section */}
+            <div className="px-6 pt-6 pb-6 bg-white flex flex-col gap-5 text-center items-center">
+              
+              {/* QR Code */}
+              <div className="p-3 border-[3px] border-amber-500 rounded-2xl bg-white inline-block shadow-sm">
+                <QRCodeSVG value={`GGE2026-STAFF-${selectedStaff.id}`} size={140} level="H" includeMargin={false} fgColor="#0f172a" />
               </div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Scan at Secure Entry</p>
+
+              {/* Name & Role */}
+              <div className="flex flex-col items-center space-y-1">
+                <h2 className="text-2xl font-black text-slate-900 uppercase leading-none tracking-tighter break-words">
+                  {selectedStaff.full_name}
+                </h2>
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                  {selectedStaff.company_name}
+                </p>
+              </div>
+              
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Scan at Secure Entry</p>
             </div>
-            <div className="bg-slate-50 p-4 border-t border-slate-100 text-center">
-               <Button onClick={() => setSelectedStaff(null)} className="w-full bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg hover:bg-black transition-all">Close Pass</Button>
+
+            {/* Footer Details */}
+            <div className="bg-amber-500 text-white flex px-6 py-4 w-full">
+              <div className="w-1/2 pr-3 border-r border-amber-600 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-amber-200 mb-0.5">Date</p>
+                <p className="text-[9px] font-black uppercase tracking-widest leading-none">12-24 Aug 2026</p>
+              </div>
+              <div className="w-1/2 pl-4 text-left">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-amber-200 mb-0.5">Location</p>
+                <p className="text-[9px] font-black uppercase tracking-widest leading-none">GMDC Hall, Ahmedabad</p>
+              </div>
             </div>
+
+            {/* Organizer */}
+            <div className="bg-slate-50 px-6 py-4 flex flex-col items-center justify-center gap-1.5">
+              <div className="text-center">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Organized By</p>
+                <p className="text-[9px] font-black text-slate-900 uppercase tracking-wide">Shree Balaji Event LLP</p>
+              </div>
+            </div>
+
+            {/* Action Footer */}
+            <div className="bg-white p-4 text-center">
+               <Button onClick={() => setSelectedStaff(null)} className="w-full bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-md hover:bg-black transition-all">Close Pass</Button>
+            </div>
+
           </div>
         </div>
       )}
