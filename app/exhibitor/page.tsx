@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 
 export default function ExhibitorDashboard() {
   const router = useRouter()
@@ -13,12 +14,16 @@ export default function ExhibitorDashboard() {
   const [profile, setProfile] = useState<any>(null)
   const [staffList, setStaffList] = useState<any[]>([])
 
+  // Registration Modal State
+  const [showModal, setShowModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [newStaff, setNewStaff] = useState({ full_name: '', phone: '', email: '' })
+
   useEffect(() => {
     fetchExhibitorData()
   }, [])
 
   const fetchExhibitorData = async () => {
-    // 1. Get Logged In User
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -26,7 +31,6 @@ export default function ExhibitorDashboard() {
       return
     }
 
-    // 2. Fetch their specific Exhibitor Profile
     const { data: exhibitorData } = await supabase
       .from('exhibitors')
       .select('*')
@@ -37,7 +41,6 @@ export default function ExhibitorDashboard() {
     if (exhibitorData) {
       setProfile(exhibitorData)
       
-      // 3. Fetch their registered staff members (linked by company name)
       const { data: staffData } = await supabase
         .from('exhibitors')
         .select('*')
@@ -55,6 +58,34 @@ export default function ExhibitorDashboard() {
     router.push('/login')
   }
 
+  const handleRegisterStaff = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    // Create the new staff record, linking it to the company
+    const staffRecord = {
+      company_name: profile.company_name,
+      full_name: newStaff.full_name,
+      phone: newStaff.phone,
+      email: newStaff.email,
+      stall_number: profile.stall_number,
+      stall_tier: profile.stall_tier,
+      is_staff: true,
+      payment_status: profile.payment_status // They inherit the company's payment status
+    }
+
+    const { error } = await supabase.from('exhibitors').insert([staffRecord])
+
+    if (error) {
+      alert("Error generating badge: " + error.message)
+    } else {
+      await fetchExhibitorData() // Refresh the list
+      setShowModal(false)
+      setNewStaff({ full_name: '', phone: '', email: '' }) // Reset form
+    }
+    setIsSubmitting(false)
+  }
+
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Accessing Secure Portal...</div>
 
   if (!profile) return (
@@ -65,6 +96,10 @@ export default function ExhibitorDashboard() {
       <Button onClick={handleLogout} variant="outline" className="mt-4 font-black uppercase tracking-widest text-[10px]">Return to Login</Button>
     </div>
   )
+
+  const limit = profile.badge_limit || 0
+  const used = staffList.length
+  const isLimitReached = used >= limit
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20">
@@ -118,6 +153,20 @@ export default function ExhibitorDashboard() {
                   </span>
                 </div>
               </div>
+
+              {/* BADGE TRACKER */}
+              <div className="pt-4 border-t border-slate-100">
+                 <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Badges Used</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{used} / {limit}</span>
+                 </div>
+                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${isLimitReached ? 'bg-red-500' : 'bg-orange-500'}`} 
+                      style={{ width: `${limit > 0 ? (used / limit) * 100 : 0}%` }}
+                    ></div>
+                 </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -125,9 +174,13 @@ export default function ExhibitorDashboard() {
           <Card className="md:col-span-2 border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
             <CardHeader className="bg-[#0b3d41] text-white p-6 flex flex-row justify-between items-center">
               <CardTitle className="text-sm font-black uppercase tracking-widest">
-                Registered Staff ({staffList.length})
+                Registered Staff ({used})
               </CardTitle>
-              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-full px-4 h-8 shadow-md">
+              <Button 
+                size="sm" 
+                onClick={() => setShowModal(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-full px-4 h-8 shadow-md"
+              >
                 + Register Staff
               </Button>
             </CardHeader>
@@ -144,7 +197,7 @@ export default function ExhibitorDashboard() {
                     <tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                       <th className="p-4 px-6">Name</th>
                       <th className="p-4">Phone</th>
-                      <th className="p-4 text-right px-6">Status</th>
+                      <th className="p-4 text-right px-6">QR Code</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -153,7 +206,9 @@ export default function ExhibitorDashboard() {
                         <td className="p-4 px-6 font-bold text-sm text-slate-900 uppercase">{staff.full_name}</td>
                         <td className="p-4 text-xs font-medium text-slate-500">{staff.phone}</td>
                         <td className="p-4 text-right px-6">
-                           <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest text-emerald-600 border-emerald-200 bg-emerald-50">Active</Badge>
+                           <Button variant="outline" size="sm" className="text-[8px] font-black uppercase tracking-widest text-slate-500 h-6">
+                             View Pass
+                           </Button>
                         </td>
                       </tr>
                     ))}
@@ -162,9 +217,79 @@ export default function ExhibitorDashboard() {
               )}
             </CardContent>
           </Card>
-
         </div>
       </div>
+
+      {/* REGISTRATION MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
+            <CardHeader className="bg-orange-500 text-white p-6 border-b-4 border-orange-700">
+              <CardTitle className="text-sm font-black uppercase tracking-widest">Register New Staff</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              
+              {isLimitReached ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="text-4xl">🛑</div>
+                  <h3 className="font-black text-slate-900 uppercase">Badge Limit Reached</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-relaxed">
+                    You have generated all {limit} of your allotted staff badges. Please contact the organizers to purchase additional passes.
+                  </p>
+                  <Button onClick={() => setShowModal(false)} className="w-full h-12 mt-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl">
+                    Close
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleRegisterStaff} className="space-y-4">
+                  <div className="bg-orange-50 border border-orange-100 text-orange-800 p-3 rounded-xl text-[9px] font-black uppercase tracking-widest mb-4 flex justify-between items-center">
+                    <span>Available Badges</span>
+                    <span className="bg-white px-2 py-1 rounded-md shadow-sm">{limit - used} Remaining</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</label>
+                    <Input 
+                      required
+                      value={newStaff.full_name} 
+                      onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
+                      placeholder="e.g. Rahul Patel" 
+                      className="font-bold h-12 rounded-xl bg-slate-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Number</label>
+                    <Input 
+                      required
+                      value={newStaff.phone} 
+                      onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
+                      placeholder="+91" 
+                      className="font-bold h-12 rounded-xl bg-slate-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address (Optional)</label>
+                    <Input 
+                      type="email"
+                      value={newStaff.email} 
+                      onChange={e => setNewStaff({...newStaff, email: e.target.value})}
+                      placeholder="staff@company.com" 
+                      className="font-bold h-12 rounded-xl bg-slate-50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <Button type="button" onClick={() => setShowModal(false)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
+                    <Button type="submit" disabled={isSubmitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
+                      {isSubmitting ? 'Generating...' : 'Add Staff'}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
