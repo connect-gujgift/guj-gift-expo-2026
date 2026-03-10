@@ -8,21 +8,7 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen font-sans selection:bg-orange-500 selection:text-white">
       
-      {/* NEW: TRANSPARENT TOP NAVIGATION */}
-      <header className="absolute top-0 w-full z-50 flex justify-between items-center p-6 md:px-12 bg-gradient-to-b from-black/60 to-transparent">
-        <div className="text-white font-black italic text-xl tracking-widest drop-shadow-md">
-          GGE 2026
-        </div>
-        <nav className="hidden md:flex gap-8 items-center text-white/90 font-bold text-[10px] uppercase tracking-widest">
-          <Link href="/exhibitors" className="hover:text-orange-500 transition-colors drop-shadow-md">Directory</Link>
-          <Link href="/floor-plan" className="hover:text-orange-500 transition-colors drop-shadow-md">Stall Map</Link>
-          <Link href="/pass" className="text-orange-400 hover:text-orange-300 transition-colors flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/20 backdrop-blur-md">
-            <span>🎟️</span> Event Staff Pass
-          </Link>
-        </nav>
-      </header>
-
-      {/* HERO SECTION */}
+      {/* HERO SECTION - NO NAVIGATION HERE */}
       <section className="relative h-[700px] flex items-center justify-center text-center text-white bg-slate-900 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image 
@@ -36,18 +22,19 @@ export default function LandingPage() {
           />
         </div>
 
-        <div className="relative z-10 max-w-5xl px-6 space-y-8 animate-in fade-in zoom-in duration-700 mt-10">
+        <div className="relative z-10 max-w-5xl px-6 space-y-8 animate-in fade-in zoom-in duration-700">
           
           <h1 className="text-5xl md:text-8xl font-black tracking-tighter drop-shadow-2xl leading-none italic uppercase">
             The Future of <br/>
             <span className="text-orange-500">Corporate Gifting</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow-md">
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-medium leading-relaxed">
             Join Gujarat's most influential B2B exhibition. Discover 2026 trends, connect with global suppliers, and scale your sourcing.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
+          {/* MAIN CENTER BUTTONS */}
+          <div className="flex flex-col md:flex-row gap-4 justify-center pt-6">
             <Link href="/register">
               <Button size="lg" className="w-full sm:w-auto text-sm px-10 py-8 bg-orange-600 hover:bg-orange-700 font-black uppercase tracking-widest shadow-2xl shadow-orange-900/40 rounded-2xl transition-all active:scale-95">
                 Register as Visitor
@@ -61,16 +48,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* NEW: MOBILE-FRIENDLY STAFF PASS LINK */}
-          <div className="pt-2 md:hidden">
-            <Link href="/pass">
-              <Button variant="link" className="text-orange-400 font-black uppercase tracking-widest text-[10px] drop-shadow-md">
-                🎟️ Get Event Staff Pass →
-              </Button>
-            </Link>
-          </div>
-
-          {/* OFFICIAL EVENT DETAILS */}
+          {/* EVENT DETAILS GRID */}
           <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-80">
              <Detail label="DATE" value="12 - 24 AUG 2026" />
              <Detail label="CITY" value="AHMEDABAD" />
@@ -81,7 +59,7 @@ export default function LandingPage() {
       </section>
 
       {/* INFO SECTION */}
-      <section className="py-24 bg-white flex-1">
+      <section className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
           <FeatureCard icon="🏢" title="500+ Exhibitors" desc="Direct access to India's leading manufacturers and brand owners." />
           <FeatureCard icon="🤝" title="Smart Networking" desc="Use our integrated app tools to schedule one-on-one B2B meetings." />
@@ -94,17 +72,17 @@ export default function LandingPage() {
 
 function Detail({ label, value }: { label: string, value: string }) {
   return (
-    <div className="flex flex-col items-center md:items-start text-left">
+    <div className="flex flex-col items-center md:items-start text-center md:text-left">
       <p className="text-[9px] font-black tracking-[0.3em] text-orange-500 mb-1">{label}</p>
-      <p className="text-xs font-bold tracking-widest uppercase drop-shadow-md text-white">{value}</p>
+      <p className="text-xs font-bold tracking-widest uppercase">{value}</p>
     </div>
   )
 }
 
 function FeatureCard({ icon, title, desc }: { icon: string, title: string, desc: string }) {
   return (
-    <div className="group p-8 bg-slate-50 rounded-[2.5rem] border-b-4 border-transparent hover:border-orange-500 hover:bg-white hover:shadow-2xl transition-all duration-300 cursor-default">
-      <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">{icon}</div>
+    <div className="group p-8 bg-slate-50 rounded-[2.5rem] border-b-4 border-transparent hover:border-orange-500 transition-all duration-300">
+      <div className="text-5xl mb-6">{icon}</div>
       <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 mb-3">{title}</h3>
       <p className="text-slate-500 text-sm font-medium leading-relaxed">{desc}</p>
     </div>
