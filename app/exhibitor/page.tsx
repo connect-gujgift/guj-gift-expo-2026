@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { QRCodeSVG } from 'qrcode.react'
 
 export default function ExhibitorDashboard() {
   const router = useRouter()
@@ -18,6 +19,9 @@ export default function ExhibitorDashboard() {
   const [showModal, setShowModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [newStaff, setNewStaff] = useState({ full_name: '', phone: '', email: '' })
+
+  // Digital Pass Modal State
+  const [selectedStaff, setSelectedStaff] = useState<any>(null)
 
   useEffect(() => {
     fetchExhibitorData()
@@ -62,7 +66,6 @@ export default function ExhibitorDashboard() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Create the new staff record, linking it to the company
     const staffRecord = {
       company_name: profile.company_name,
       full_name: newStaff.full_name,
@@ -71,7 +74,7 @@ export default function ExhibitorDashboard() {
       stall_number: profile.stall_number,
       stall_tier: profile.stall_tier,
       is_staff: true,
-      payment_status: profile.payment_status // They inherit the company's payment status
+      payment_status: profile.payment_status 
     }
 
     const { error } = await supabase.from('exhibitors').insert([staffRecord])
@@ -79,9 +82,9 @@ export default function ExhibitorDashboard() {
     if (error) {
       alert("Error generating badge: " + error.message)
     } else {
-      await fetchExhibitorData() // Refresh the list
+      await fetchExhibitorData() 
       setShowModal(false)
-      setNewStaff({ full_name: '', phone: '', email: '' }) // Reset form
+      setNewStaff({ full_name: '', phone: '', email: '' }) 
     }
     setIsSubmitting(false)
   }
@@ -146,12 +149,6 @@ export default function ExhibitorDashboard() {
                     {profile.stall_tier || 'Silver'}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</span>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${profile.payment_status === 'Fully Paid' ? 'text-emerald-500' : 'text-orange-500'}`}>
-                    {profile.payment_status || 'Pending'}
-                  </span>
-                </div>
               </div>
 
               {/* BADGE TRACKER */}
@@ -206,7 +203,12 @@ export default function ExhibitorDashboard() {
                         <td className="p-4 px-6 font-bold text-sm text-slate-900 uppercase">{staff.full_name}</td>
                         <td className="p-4 text-xs font-medium text-slate-500">{staff.phone}</td>
                         <td className="p-4 text-right px-6">
-                           <Button variant="outline" size="sm" className="text-[8px] font-black uppercase tracking-widest text-slate-500 h-6">
+                           <Button 
+                             onClick={() => setSelectedStaff(staff)}
+                             variant="outline" 
+                             size="sm" 
+                             className="text-[10px] font-black uppercase tracking-widest text-[#0b3d41] border-[#0b3d41] hover:bg-[#0b3d41] hover:text-white transition-all h-8 rounded-lg"
+                           >
                              View Pass
                            </Button>
                         </td>
@@ -220,7 +222,7 @@ export default function ExhibitorDashboard() {
         </div>
       </div>
 
-      {/* REGISTRATION MODAL */}
+      {/* REGISTRATION MODAL (Hidden if not active) */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
@@ -228,7 +230,6 @@ export default function ExhibitorDashboard() {
               <CardTitle className="text-sm font-black uppercase tracking-widest">Register New Staff</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              
               {isLimitReached ? (
                 <div className="text-center py-6 space-y-4">
                   <div className="text-4xl">🛑</div>
@@ -249,35 +250,13 @@ export default function ExhibitorDashboard() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</label>
-                    <Input 
-                      required
-                      value={newStaff.full_name} 
-                      onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
-                      placeholder="e.g. Rahul Patel" 
-                      className="font-bold h-12 rounded-xl bg-slate-50"
-                    />
+                    <Input required value={newStaff.full_name} onChange={e => setNewStaff({...newStaff, full_name: e.target.value})} placeholder="e.g. Rahul Patel" className="font-bold h-12 rounded-xl bg-slate-50"/>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Number</label>
-                    <Input 
-                      required
-                      value={newStaff.phone} 
-                      onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
-                      placeholder="+91" 
-                      className="font-bold h-12 rounded-xl bg-slate-50"
-                    />
+                    <Input required value={newStaff.phone} onChange={e => setNewStaff({...newStaff, phone: e.target.value})} placeholder="+91" className="font-bold h-12 rounded-xl bg-slate-50"/>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address (Optional)</label>
-                    <Input 
-                      type="email"
-                      value={newStaff.email} 
-                      onChange={e => setNewStaff({...newStaff, email: e.target.value})}
-                      placeholder="staff@company.com" 
-                      className="font-bold h-12 rounded-xl bg-slate-50"
-                    />
-                  </div>
-
+                  
                   <div className="grid grid-cols-2 gap-4 pt-4">
                     <Button type="button" onClick={() => setShowModal(false)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
                     <Button type="submit" disabled={isSubmitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
@@ -290,6 +269,55 @@ export default function ExhibitorDashboard() {
           </Card>
         </div>
       )}
+
+      {/* DIGITAL PASS MODAL (QR CODE) */}
+      {selectedStaff && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-4 border-[#0b3d41]">
+            
+            <div className="bg-[#0b3d41] text-white text-center py-6 px-4 relative">
+               <h2 className="text-xl font-black uppercase tracking-widest italic">Staff Pass</h2>
+               <p className="text-[10px] font-bold text-teal-200 uppercase tracking-widest mt-1">Guj Gift Expo 2026</p>
+               <button onClick={() => setSelectedStaff(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">✕</button>
+            </div>
+
+            <div className="p-8 flex flex-col items-center text-center space-y-6">
+              
+              <div className="space-y-1 w-full border-b border-slate-100 pb-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</p>
+                <p className="text-2xl font-black text-slate-900 uppercase leading-none">{selectedStaff.full_name}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company</p>
+                <p className="text-lg font-black text-orange-500 uppercase leading-none">{selectedStaff.company_name}</p>
+                <p className="text-xs font-bold text-slate-400 uppercase pt-1">Stall: {selectedStaff.stall_number || 'TBA'}</p>
+              </div>
+
+              {/* THE QR CODE */}
+              <div className="bg-white p-4 rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)] border-2 border-slate-100">
+                <QRCodeSVG 
+                  value={`GGE2026-STAFF-${selectedStaff.id}`} 
+                  size={180} 
+                  level="H" 
+                  includeMargin={false}
+                  fgColor="#0f172a" 
+                />
+              </div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Scan at Entry Gate</p>
+              
+            </div>
+
+            <div className="bg-slate-50 p-4 border-t border-slate-100 text-center">
+               <Button onClick={() => setSelectedStaff(null)} className="w-full bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg hover:bg-black transition-all">
+                 Close Pass
+               </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
