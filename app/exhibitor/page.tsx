@@ -168,7 +168,7 @@ export default function ExhibitorPortal() {
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               {/* Button to open the camera */}
-              <Button onClick={() => router.push('/exhibitor/scan')} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12 shadow-xl hover:scale-105 transition-all">
+              <Button onClick={() => router.push('/exhibitors/scanner')} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12 shadow-xl hover:scale-105 transition-all">
                 📷 Scan Visitor Pass
               </Button>
               {/* Button to export to Excel/CSV */}
