@@ -4,24 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { QRCodeSVG } from 'qrcode.react'
 
-export default function ExhibitorDashboard() {
+export default function ExhibitorPortal() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
-  const [staffList, setStaffList] = useState<any[]>([])
-
-  // Registration Modal State
-  const [showModal, setShowModal] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [newStaff, setNewStaff] = useState({ full_name: '', phone: '', email: '' })
-
-  // Digital Pass Modal State
-  const [selectedStaff, setSelectedStaff] = useState<any>(null)
+  const [staff, setStaff] = useState<any[]>([])
+  const [leads, setLeads] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchExhibitorData()
@@ -29,31 +18,51 @@ export default function ExhibitorDashboard() {
 
   const fetchExhibitorData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    
     if (!user) {
       router.push('/login')
       return
     }
 
+    // 1. Fetch Exhibitor Profile
     const { data: exhibitorData } = await supabase
       .from('exhibitors')
       .select('*')
       .eq('email', user.email)
-      .eq('is_staff', false)
       .single()
 
-    if (exhibitorData) {
-      setProfile(exhibitorData)
-      
-      const { data: staffData } = await supabase
-        .from('exhibitors')
-        .select('*')
-        .eq('company_name', exhibitorData.company_name)
-        .eq('is_staff', true)
-        
-      if (staffData) setStaffList(staffData)
+    if (!exhibitorData) {
+      router.push('/login')
+      return
     }
+    setProfile(exhibitorData)
+
+    // 2. Fetch their registered staff
+    const { data: staffData } = await supabase
+      .from('exhibitors')
+      .select('*')
+      .eq('company_name', exhibitorData.company_name)
+      .eq('is_staff', true)
     
+    setStaff(staffData || [])
+
+    // 3. Fetch their Collected Leads
+    const { data: leadsData } = await supabase
+      .from('leads')
+      .select(`
+        created_at,
+        visitors (
+          full_name,
+          company_name,
+          designation,
+          phone,
+          city,
+          business_type
+        )
+      `)
+      .eq('exhibitor_id', exhibitorData.id)
+      .order('created_at', { ascending: false })
+
+    setLeads(leadsData || [])
     setLoading(false)
   }
 
@@ -62,262 +71,153 @@ export default function ExhibitorDashboard() {
     router.push('/login')
   }
 
-  const handleRegisterStaff = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  // The EXCEL EXPORT Function
+  const exportLeadsCSV = () => {
+    if (leads.length === 0) return alert("No leads to export yet.")
+    
+    const headers = ["Scan Date", "Name", "Company", "Designation", "Phone", "City", "Business Type"]
+    const rows = leads.map(lead => [
+      new Date(lead.created_at).toLocaleDateString(),
+      lead.visitors?.full_name || '',
+      lead.visitors?.company_name || '',
+      lead.visitors?.designation || '',
+      lead.visitors?.phone || '',
+      lead.visitors?.city || '',
+      lead.visitors?.business_type || ''
+    ])
 
-    const staffRecord = {
-      company_name: profile.company_name,
-      full_name: newStaff.full_name,
-      phone: newStaff.phone,
-      email: newStaff.email,
-      stall_number: profile.stall_number,
-      stall_tier: profile.stall_tier,
-      is_staff: true,
-      payment_status: profile.payment_status 
-    }
-
-    const { error } = await supabase.from('exhibitors').insert([staffRecord])
-
-    if (error) {
-      alert("Error generating badge: " + error.message)
-    } else {
-      await fetchExhibitorData() 
-      setShowModal(false)
-      setNewStaff({ full_name: '', phone: '', email: '' }) 
-    }
-    setIsSubmitting(false)
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `${profile?.company_name}_Leads_GGE2026.csv`
+    link.click()
   }
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Accessing Secure Portal...</div>
-
-  if (!profile) return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 space-y-4">
-      <div className="text-4xl">⚠️</div>
-      <h1 className="text-xl font-black uppercase text-[#0b3d41]">Profile Not Found</h1>
-      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest text-center">Your email is not linked to an active exhibitor stall.</p>
-      <Button onClick={handleLogout} variant="outline" className="mt-4 font-black uppercase tracking-widest text-[10px]">Return to Login</Button>
-    </div>
-  )
-
-  const limit = profile.badge_limit || 0
-  const used = staffList.length
-  const isLimitReached = used >= limit
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Loading Portal...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20 text-slate-900">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] shadow-sm border-b-4 border-[#0b3d41] gap-4">
+        <div className="bg-white rounded-[2rem] p-6 border-b-4 border-[#0b3d41] shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none">
-              {profile.company_name}
+            <h1 className="text-3xl font-black uppercase text-[#0b3d41] tracking-tighter italic leading-none">
+              {profile?.company_name}
             </h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
-              Welcome, {profile.full_name} • Exhibitor Portal
+              Welcome, {profile?.full_name} • Exhibitor Portal
             </p>
           </div>
-          <Button variant="destructive" onClick={handleLogout} className="font-black border-2 text-[10px] uppercase rounded-xl px-6 h-10 shadow-lg">
+          <Button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-10 shadow-md transition-all">
             Secure Logout
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          
-          {/* STALL DETAILS CARD */}
-          <Card className="md:col-span-1 border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
-            <CardHeader className="bg-slate-900 text-white p-6">
-              <CardTitle className="text-sm font-black uppercase tracking-widest text-orange-500">
-                Stall Allocation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="text-center p-6 bg-slate-50 rounded-2xl border-2 border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Stall Number</p>
-                <p className="text-5xl font-black text-[#0b3d41]">{profile.stall_number || 'TBD'}</p>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tier</span>
-                  <Badge className={`uppercase text-[9px] font-black tracking-widest px-3 py-1 ${
-                    profile.stall_tier === 'Diamond' ? 'bg-purple-600' :
-                    profile.stall_tier === 'Platinum' ? 'bg-indigo-600' :
-                    profile.stall_tier === 'Gold' ? 'bg-amber-500' : 'bg-[#0b3d41]'
-                  }`}>
-                    {profile.stall_tier || 'Silver'}
-                  </Badge>
-                </div>
-              </div>
+        {/* TOP ROW: STALL & STAFF */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-1 bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+            <div className="bg-slate-900 text-orange-500 p-4 font-black uppercase tracking-widest text-[10px] text-center">
+              Stall Allocation
+            </div>
+            <div className="p-8 flex-1 flex flex-col items-center justify-center bg-slate-50/50 m-4 rounded-3xl border border-slate-100">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Stall Number</p>
+              <h2 className="text-6xl font-black text-[#0b3d41] tracking-tighter">{profile?.stall_number?.[0] || 'TBA'}</h2>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
+               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tier</span>
+               <span className="bg-[#0b3d41] text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{profile?.stall_tier || 'Standard'}</span>
+            </div>
+          </div>
 
-              {/* BADGE TRACKER */}
-              <div className="pt-4 border-t border-slate-100">
-                 <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Badges Used</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{used} / {limit}</span>
-                 </div>
-                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${isLimitReached ? 'bg-red-500' : 'bg-orange-500'}`} 
-                      style={{ width: `${limit > 0 ? (used / limit) * 100 : 0}%` }}
-                    ></div>
-                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* STAFF MANAGEMENT CARD */}
-          <Card className="md:col-span-2 border-0 shadow-lg rounded-[2rem] bg-white overflow-hidden">
-            <CardHeader className="bg-[#0b3d41] text-white p-6 flex flex-row justify-between items-center">
-              <CardTitle className="text-sm font-black uppercase tracking-widest">
-                Registered Staff ({used})
-              </CardTitle>
-              <Button 
-                size="sm" 
-                onClick={() => setShowModal(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest text-[9px] rounded-full px-4 h-8 shadow-md"
-              >
-                + Register Staff
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0 overflow-auto max-h-[400px]">
-              {staffList.length === 0 ? (
-                <div className="p-12 text-center text-slate-400 space-y-3">
-                  <div className="text-4xl">👷</div>
-                  <p className="text-[10px] font-black uppercase tracking-widest italic">No staff registered yet.</p>
-                  <p className="text-[9px] font-bold text-slate-300 uppercase">Add your team members to generate their entry QR codes.</p>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 sticky top-0">
-                    <tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                      <th className="p-4 px-6">Name</th>
-                      <th className="p-4">Phone</th>
-                      <th className="p-4 text-right px-6">QR Code</th>
+          <div className="md:col-span-2 bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+            <div className="bg-[#0b3d41] text-white p-4 font-black uppercase tracking-widest text-[10px] flex justify-between items-center">
+              <span>Registered Staff ({staff.length}/{profile?.badge_limit || 2})</span>
+            </div>
+            <div className="p-0 overflow-auto max-h-[250px] flex-1">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr className="text-[8px] font-black uppercase text-slate-400 tracking-widest">
+                    <th className="p-4">Name</th>
+                    <th className="p-4">Phone</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {staff.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50">
+                      <td className="p-4 font-black text-slate-900 uppercase text-xs">{s.full_name}</td>
+                      <td className="p-4 text-[10px] font-bold text-slate-500">{s.phone}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {staffList.map((staff) => (
-                      <tr key={staff.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-4 px-6 font-bold text-sm text-slate-900 uppercase">{staff.full_name}</td>
-                        <td className="p-4 text-xs font-medium text-slate-500">{staff.phone}</td>
-                        <td className="p-4 text-right px-6">
-                           <Button 
-                             onClick={() => setSelectedStaff(staff)}
-                             variant="outline" 
-                             size="sm" 
-                             className="text-[10px] font-black uppercase tracking-widest text-[#0b3d41] border-[#0b3d41] hover:bg-[#0b3d41] hover:text-white transition-all h-8 rounded-lg"
-                           >
-                             View Pass
-                           </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* REGISTRATION MODAL (Hidden if not active) */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
-            <CardHeader className="bg-orange-500 text-white p-6 border-b-4 border-orange-700">
-              <CardTitle className="text-sm font-black uppercase tracking-widest">Register New Staff</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {isLimitReached ? (
-                <div className="text-center py-6 space-y-4">
-                  <div className="text-4xl">🛑</div>
-                  <h3 className="font-black text-slate-900 uppercase">Badge Limit Reached</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 leading-relaxed">
-                    You have generated all {limit} of your allotted staff badges. Please contact the organizers to purchase additional passes.
-                  </p>
-                  <Button onClick={() => setShowModal(false)} className="w-full h-12 mt-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl">
-                    Close
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleRegisterStaff} className="space-y-4">
-                  <div className="bg-orange-50 border border-orange-100 text-orange-800 p-3 rounded-xl text-[9px] font-black uppercase tracking-widest mb-4 flex justify-between items-center">
-                    <span>Available Badges</span>
-                    <span className="bg-white px-2 py-1 rounded-md shadow-sm">{limit - used} Remaining</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</label>
-                    <Input required value={newStaff.full_name} onChange={e => setNewStaff({...newStaff, full_name: e.target.value})} placeholder="e.g. Rahul Patel" className="font-bold h-12 rounded-xl bg-slate-50"/>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Number</label>
-                    <Input required value={newStaff.phone} onChange={e => setNewStaff({...newStaff, phone: e.target.value})} placeholder="+91" className="font-bold h-12 rounded-xl bg-slate-50"/>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 pt-4">
-                    <Button type="button" onClick={() => setShowModal(false)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
-                    <Button type="submit" disabled={isSubmitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
-                      {isSubmitting ? 'Generating...' : 'Add Staff'}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* DIGITAL PASS MODAL (QR CODE) */}
-      {selectedStaff && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-4 border-[#0b3d41]">
-            
-            <div className="bg-[#0b3d41] text-white text-center py-6 px-4 relative">
-               <h2 className="text-xl font-black uppercase tracking-widest italic">Staff Pass</h2>
-               <p className="text-[10px] font-bold text-teal-200 uppercase tracking-widest mt-1">Guj Gift Expo 2026</p>
-               <button onClick={() => setSelectedStaff(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">✕</button>
+                  ))}
+                  {staff.length === 0 && (
+                     <tr><td colSpan={2} className="p-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No staff registered yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            <div className="p-8 flex flex-col items-center text-center space-y-6">
-              
-              <div className="space-y-1 w-full border-b border-slate-100 pb-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</p>
-                <p className="text-2xl font-black text-slate-900 uppercase leading-none">{selectedStaff.full_name}</p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Company</p>
-                <p className="text-lg font-black text-orange-500 uppercase leading-none">{selectedStaff.company_name}</p>
-                <p className="text-xs font-bold text-slate-400 uppercase pt-1">Stall: {selectedStaff.stall_number || 'TBA'}</p>
-              </div>
-
-              {/* THE QR CODE */}
-              <div className="bg-white p-4 rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)] border-2 border-slate-100">
-                <QRCodeSVG 
-                  value={`GGE2026-STAFF-${selectedStaff.id}`} 
-                  size={180} 
-                  level="H" 
-                  includeMargin={false}
-                  fgColor="#0f172a" 
-                />
-              </div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Scan at Entry Gate</p>
-              
-            </div>
-
-            <div className="bg-slate-50 p-4 border-t border-slate-100 text-center">
-               <Button onClick={() => setSelectedStaff(null)} className="w-full bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg hover:bg-black transition-all">
-                 Close Pass
-               </Button>
-            </div>
-
           </div>
         </div>
-      )}
 
+        {/* BOTTOM ROW: LEAD RETRIEVAL & EXPORT */}
+        <div className="bg-white rounded-[2rem] shadow-lg border-2 border-orange-500 overflow-hidden">
+          <div className="bg-orange-500 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-widest italic leading-none">Lead Retrieval</h2>
+              <p className="text-[10px] font-bold text-orange-100 uppercase tracking-widest mt-1">Total Scanned: {leads.length}</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {/* Button to open the camera */}
+              <Button onClick={() => router.push('/exhibitor/scan')} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12 shadow-xl hover:scale-105 transition-all">
+                📷 Scan Visitor Pass
+              </Button>
+              {/* Button to export to Excel/CSV */}
+              <Button onClick={exportLeadsCSV} variant="outline" className="w-full sm:w-auto bg-white/10 border-white/20 hover:bg-white/20 text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12">
+                📥 Export CSV
+              </Button>
+            </div>
+          </div>
+          
+          <div className="p-0 overflow-auto max-h-[400px]">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-orange-50 sticky top-0 z-10">
+                <tr className="text-[9px] font-black uppercase text-orange-800 tracking-widest">
+                  <th className="p-4">Time</th>
+                  <th className="p-4">Visitor Name</th>
+                  <th className="p-4">Company</th>
+                  <th className="p-4">Phone</th>
+                  <th className="p-4">Type</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {leads.map((lead, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-[9px] font-bold text-slate-400">
+                      {new Date(lead.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </td>
+                    <td className="p-4 font-black text-slate-900 uppercase text-xs">{lead.visitors?.full_name}</td>
+                    <td className="p-4 text-[10px] font-bold text-slate-600 uppercase">{lead.visitors?.company_name}</td>
+                    <td className="p-4 text-[10px] font-bold text-slate-500">{lead.visitors?.phone}</td>
+                    <td className="p-4">
+                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest">
+                        {lead.visitors?.business_type || 'Visitor'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {leads.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-16 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px] italic">
+                      No leads scanned yet. Click "Scan Visitor Pass" to capture your first lead!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
   )
 }

@@ -28,7 +28,7 @@ export default function LeadScannerPage() {
         .eq('id', user.id)
         .single()
 
-      if (!exhibitorData) return router.push('/dashboard')
+      if (!exhibitorData) return router.push('/exhibitor') // Fixed routing
       setExhibitor(exhibitorData)
     }
     initUser()
@@ -42,12 +42,13 @@ export default function LeadScannerPage() {
     setErrorMessage('')
 
     try {
-      // SMART PARSE: Handle IDs that might be wrapped in URLs or have spaces
       let parsedId = scannedText.trim()
-      if (parsedId.includes('?id=')) {
-        parsedId = parsedId.split('?id=')[1].split('&')[0]
-      } else if (parsedId.includes('/')) {
-        parsedId = parsedId.split('/').pop() || parsedId
+
+      // 🚨 SMART PARSE: Handle the strict GGE2026-VISITOR- prefix!
+      if (parsedId.startsWith('GGE2026-VISITOR-')) {
+        parsedId = parsedId.replace('GGE2026-VISITOR-', '')
+      } else {
+        throw new Error("Invalid Badge. Please scan a valid Visitor Pass.")
       }
 
       // 1. Find the Visitor
@@ -58,7 +59,7 @@ export default function LeadScannerPage() {
         .single()
 
       if (visitorError || !visitor) {
-        throw new Error("Visitor not found. Ensure you are scanning a valid GGE 2026 badge.")
+        throw new Error("Visitor not found in the database.")
       }
 
       // 2. Save the Lead
@@ -96,11 +97,12 @@ export default function LeadScannerPage() {
     <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 font-sans text-white pb-20">
       
       <div className="w-full max-w-[400px] mb-6 flex justify-between items-center mt-4">
-          <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full transition-all">
+          {/* Fixed routing here to point to /exhibitor */}
+          <Button variant="ghost" onClick={() => router.push('/exhibitor')} className="text-white hover:bg-white/10 text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full transition-all">
              ← Back to Hub
           </Button>
           <div className="text-right">
-              <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest">Stall {exhibitor.stall_number}</p>
+              <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest">Stall {exhibitor.stall_number?.[0] || 'TBA'}</p>
           </div>
       </div>
 
