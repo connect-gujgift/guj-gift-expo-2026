@@ -30,9 +30,9 @@ export default function AppHeader() {
            {/* Visual Divider */}
            <div className="h-5 w-px bg-slate-200 mx-2"></div> 
 
-           {/* Event Staff Pass - Styled as a special pill button */}
+           {/* Retrieve Pass - Styled as a special pill button */}
            <Link href="/pass" className="flex items-center gap-2 bg-orange-50 text-orange-600 border border-orange-200 px-5 py-2.5 rounded-full hover:bg-orange-100 hover:scale-105 transition-all shadow-sm">
-             <span className="text-sm leading-none">🎟️</span> Event Staff Pass
+             <span className="text-sm leading-none">🎟️</span> Retrieve Pass
            </Link>
 
            {/* Portal Login */}
@@ -44,7 +44,7 @@ export default function AppHeader() {
         {/* MOBILE NAVIGATION (Fallback for smaller screens) */}
         <div className="xl:hidden flex items-center gap-3">
            <Link href="/pass" className="text-[9px] font-black uppercase tracking-widest text-orange-600 border border-orange-200 bg-orange-50 px-3 py-2.5 rounded-lg shadow-sm">
-             Pass
+             Get Pass
            </Link>
            <Link href="/login" className="text-[9px] font-black uppercase tracking-widest text-white bg-[#0b3d41] px-4 py-2.5 rounded-lg shadow-sm">
              Login
