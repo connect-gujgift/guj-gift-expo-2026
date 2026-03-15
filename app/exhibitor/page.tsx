@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function ExhibitorPortal() {
   const router = useRouter()
@@ -11,6 +13,12 @@ export default function ExhibitorPortal() {
   const [staff, setStaff] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Staff Modal States
+  const [showStaffModal, setShowStaffModal] = useState(false)
+  const [newStaffName, setNewStaffName] = useState('')
+  const [newStaffPhone, setNewStaffPhone] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     fetchExhibitorData()
@@ -71,7 +79,34 @@ export default function ExhibitorPortal() {
     router.push('/login')
   }
 
-  // The EXCEL EXPORT Function
+  // Handle adding new staff
+  const handleRegisterStaff = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    // Add new staff record attached to this exhibitor's company
+    const { error } = await supabase.from('exhibitors').insert([{
+      full_name: newStaffName,
+      phone: newStaffPhone,
+      company_name: profile.company_name,
+      stall_number: profile.stall_number,
+      stall_tier: profile.stall_tier,
+      is_staff: true,
+      payment_status: 'Fully Paid' // Inherited
+    }])
+
+    if (error) {
+      alert("Error adding staff: " + error.message)
+    } else {
+      await fetchExhibitorData() // Refresh lists
+      setShowStaffModal(false)
+      setNewStaffName('')
+      setNewStaffPhone('')
+    }
+    setIsSubmitting(false)
+  }
+
+  // Handle exporting leads to Excel
   const exportLeadsCSV = () => {
     if (leads.length === 0) return alert("No leads to export yet.")
     
@@ -95,6 +130,9 @@ export default function ExhibitorPortal() {
   }
 
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-[#0b3d41] uppercase tracking-widest text-[10px] animate-pulse">Loading Portal...</div>
+
+  const badgeLimit = profile?.badge_limit || 2
+  const canAddStaff = staff.length < badgeLimit
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans pb-20 text-slate-900">
@@ -133,7 +171,12 @@ export default function ExhibitorPortal() {
 
           <div className="md:col-span-2 bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
             <div className="bg-[#0b3d41] text-white p-4 font-black uppercase tracking-widest text-[10px] flex justify-between items-center">
-              <span>Registered Staff ({staff.length}/{profile?.badge_limit || 2})</span>
+              <span>Registered Staff ({staff.length}/{badgeLimit})</span>
+              {canAddStaff && (
+                <Button onClick={() => setShowStaffModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white h-8 text-[9px] font-black uppercase tracking-widest rounded-lg px-4">
+                  + Register Staff
+                </Button>
+              )}
             </div>
             <div className="p-0 overflow-auto max-h-[250px] flex-1">
               <table className="w-full text-left">
@@ -167,11 +210,9 @@ export default function ExhibitorPortal() {
               <p className="text-[10px] font-bold text-orange-100 uppercase tracking-widest mt-1">Total Scanned: {leads.length}</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              {/* Button to open the camera */}
               <Button onClick={() => router.push('/exhibitors/scanner')} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12 shadow-xl hover:scale-105 transition-all">
                 📷 Scan Visitor Pass
               </Button>
-              {/* Button to export to Excel/CSV */}
               <Button onClick={exportLeadsCSV} variant="outline" className="w-full sm:w-auto bg-white/10 border-white/20 hover:bg-white/20 text-white font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-12">
                 📥 Export CSV
               </Button>
@@ -218,6 +259,37 @@ export default function ExhibitorPortal() {
         </div>
 
       </div>
+
+      {/* STAFF REGISTRATION MODAL */}
+      {showStaffModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border-0 shadow-2xl rounded-[2rem] overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="bg-[#0b3d41] text-white p-6 border-b-4 border-orange-500">
+              <h2 className="text-sm font-black uppercase tracking-widest">Register Stall Staff</h2>
+            </div>
+            <div className="p-6">
+                <form onSubmit={handleRegisterStaff} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Staff Full Name</Label>
+                    <Input required value={newStaffName} onChange={e => setNewStaffName(e.target.value)} placeholder="e.g. Rahul Patel" className="font-bold h-12 rounded-xl bg-slate-50 focus-visible:ring-orange-500"/>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mobile Number</Label>
+                    <Input required value={newStaffPhone} onChange={e => setNewStaffPhone(e.target.value)} placeholder="+91" className="font-bold h-12 rounded-xl bg-slate-50 focus-visible:ring-orange-500"/>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    <Button type="button" onClick={() => setShowStaffModal(false)} variant="outline" className="w-full font-black uppercase tracking-widest rounded-xl h-12">Cancel</Button>
+                    <Button type="submit" disabled={isSubmitting} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black uppercase tracking-widest rounded-xl h-12 shadow-lg">
+                      {isSubmitting ? 'Saving...' : 'Add Staff'}
+                    </Button>
+                  </div>
+                </form>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
