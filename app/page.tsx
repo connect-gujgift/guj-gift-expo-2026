@@ -33,7 +33,7 @@ export default function LandingPage() {
             Join Gujarat's most influential B2B exhibition. Discover 2026 trends, connect with global suppliers, and scale your sourcing.
           </p>
           
-          {/* ACTION BUTTONS (Cleaned up and centered) */}
+          {/* ACTION BUTTONS */}
           <div className="flex flex-col md:flex-row gap-4 justify-center pt-6">
             <Link href="/register">
               <Button size="lg" className="w-full sm:w-auto text-sm px-8 py-8 bg-orange-600 hover:bg-orange-700 font-black uppercase tracking-widest shadow-2xl shadow-orange-900/40 rounded-2xl transition-all active:scale-95">
@@ -47,9 +47,10 @@ export default function LandingPage() {
               </Button>
             </Link>
 
+            {/* THIS BUTTON IS NOW THE VISITOR LOGIN */}
             <Link href="/pass">
               <Button size="lg" variant="outline" className="w-full sm:w-auto text-sm px-8 py-8 bg-[#0b3d41]/80 hover:bg-[#0b3d41] text-white border-teal-500/30 backdrop-blur-md font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95">
-                🎟️ Event Staff Pass
+                🎟️ Retrieve Visitor Pass
               </Button>
             </Link>
           </div>
