@@ -259,12 +259,14 @@ export default function RetrievePassPage() {
           {/* TAB 3: SAVED SUPPLIERS (DIARY WITH NOTES) */}
           {activeTab === 'suppliers' && passType === 'Visitor' && (
             <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col h-[550px]">
+              
+              {/* THE FIXED DIARY HEADER & EXPORT BUTTON */}
               <div className="bg-[#0b3d41] p-6 text-white flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-black uppercase italic tracking-widest leading-none">My Diary</h3>
                   <p className="text-[10px] font-bold text-teal-200 uppercase tracking-widest mt-1">Saved Exhibitors</p>
                 </div>
-                <Button onClick={exportSuppliersCSV} variant="outline" className="text-[9px] font-black uppercase tracking-widest border-white/20 text-white hover:bg-white/10 h-10 px-4 rounded-xl">
+                <Button onClick={exportSuppliersCSV} className="bg-white hover:bg-slate-100 text-[#0b3d41] text-[9px] font-black uppercase tracking-widest h-10 px-4 rounded-xl shadow-sm border-0">
                   📥 Export
                 </Button>
               </div>
