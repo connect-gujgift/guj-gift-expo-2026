@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { QRCodeSVG } from 'qrcode.react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 
@@ -24,6 +23,10 @@ export default function RetrievePassPage() {
   // Scanner & Data State
   const [scanResult, setScanResult] = useState<{ status: 'success' | 'error' | 'duplicate', message: string } | null>(null)
   const [savedSuppliers, setSavedSuppliers] = useState<any[]>([])
+  
+  // Notes State
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [tempNote, setTempNote] = useState('')
 
   const handleRetrieve = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,7 +64,9 @@ export default function RetrievePassPage() {
     const { data } = await supabase
       .from('visitor_scans')
       .select(`
+        id,
         created_at,
+        notes,
         exhibitors (
           company_name,
           full_name,
@@ -116,16 +121,35 @@ export default function RetrievePassPage() {
     return () => { scanner.clear().catch(e => console.error(e)) }
   }, [activeTab])
 
+  // Save Note Function
+  const saveNote = async (scanId: string) => {
+    const { error } = await supabase
+      .from('visitor_scans')
+      .update({ notes: tempNote })
+      .eq('id', scanId)
+
+    if (!error) {
+      setSavedSuppliers(prev => prev.map(s => s.id === scanId ? { ...s, notes: tempNote } : s))
+      setEditingNoteId(null)
+    } else {
+      alert("Could not save note: " + error.message)
+    }
+  }
+
+  // Export CSV Function
   const exportSuppliersCSV = () => {
     if (savedSuppliers.length === 0) return alert("No suppliers saved yet.")
-    const headers = ["Scan Date", "Company", "Contact Person", "Phone", "Stall Number"]
+    const headers = ["Scan Date", "Company", "Contact Person", "Phone", "Stall Number", "My Notes"]
+    
     const rows = savedSuppliers.map(scan => [
       new Date(scan.created_at).toLocaleDateString(),
-      scan.exhibitors?.company_name || '',
-      scan.exhibitors?.full_name || '',
-      scan.exhibitors?.phone || '',
-      (scan.exhibitors?.stall_number || []).join(' & ') || 'N/A'
+      `"${scan.exhibitors?.company_name || ''}"`,
+      `"${scan.exhibitors?.full_name || ''}"`,
+      `"${scan.exhibitors?.phone || ''}"`,
+      `"${(scan.exhibitors?.stall_number || []).join(' & ')}"`,
+      `"${scan.notes || ''}"` // Wrapped in quotes to prevent commas in notes from breaking the CSV
     ])
+    
     const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement("a")
@@ -232,9 +256,9 @@ export default function RetrievePassPage() {
             </div>
           )}
 
-          {/* TAB 3: SAVED SUPPLIERS (DIARY) */}
+          {/* TAB 3: SAVED SUPPLIERS (DIARY WITH NOTES) */}
           {activeTab === 'suppliers' && passType === 'Visitor' && (
-            <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col h-[500px]">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col h-[550px]">
               <div className="bg-[#0b3d41] p-6 text-white flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-black uppercase italic tracking-widest leading-none">My Diary</h3>
@@ -254,9 +278,9 @@ export default function RetrievePassPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100">
-                    {savedSuppliers.map((scan, idx) => (
-                      <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
-                        <div className="flex justify-between items-start">
+                    {savedSuppliers.map((scan) => (
+                      <div key={scan.id} className="p-5 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
                           <div>
                             <p className="font-black text-slate-900 uppercase text-sm leading-tight">{scan.exhibitors?.company_name}</p>
                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Stall: {(scan.exhibitors?.stall_number || []).join(' & ')}</p>
@@ -265,10 +289,35 @@ export default function RetrievePassPage() {
                             {scan.exhibitors?.stall_tier}
                           </span>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex justify-between">
+                        
+                        <div className="pt-2 flex justify-between">
                            <p className="text-[10px] font-bold text-slate-500">{scan.exhibitors?.full_name}</p>
                            <p className="text-[10px] font-bold text-[#0b3d41]">{scan.exhibitors?.phone}</p>
                         </div>
+
+                        {/* NOTES UI */}
+                        {editingNoteId === scan.id ? (
+                          <div className="mt-3 flex gap-2 animate-in fade-in">
+                            <Input 
+                              value={tempNote} 
+                              onChange={e => setTempNote(e.target.value)} 
+                              placeholder="Write a note about this supplier..." 
+                              className="h-10 text-xs font-medium border-slate-200 bg-white"
+                              autoFocus
+                            />
+                            <Button onClick={() => saveNote(scan.id)} className="h-10 px-4 bg-[#0b3d41] hover:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest">
+                              Save
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 flex justify-between items-center group cursor-pointer" onClick={() => { setEditingNoteId(scan.id); setTempNote(scan.notes || ''); }}>
+                            <p className={`text-xs ${scan.notes ? 'text-slate-700' : 'text-slate-400 italic'}`}>
+                              {scan.notes || "Tap to add a note..."}
+                            </p>
+                            <span className="text-slate-300 group-hover:text-orange-500 transition-colors ml-2">✎</span>
+                          </div>
+                        )}
+                        
                       </div>
                     ))}
                   </div>
