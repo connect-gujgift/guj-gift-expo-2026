@@ -108,7 +108,8 @@ export default function RegistrationDesk() {
       {/* Top Bar for Staff */}
       <div className="w-full max-w-4xl flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-white italic">GGE2026 Registration Desk</h1>
+          {/* UPDATED HEADER TEXT STYLING HERE */}
+          <h1 className="text-2xl font-extrabold uppercase tracking-wide text-white">GGE 2026 Registration Desk</h1>
           <p className="text-[10px] font-bold text-teal-400 uppercase tracking-widest mt-1">Authorized Staff Only</p>
         </div>
         <Button variant="ghost" onClick={() => router.push('/admin')} className="text-slate-400 hover:text-white font-black uppercase tracking-widest text-[10px]">
